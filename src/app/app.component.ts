@@ -1,14 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { TasksComponent } from './features/tasks/tasks.component';
-import { NotificationsComponent } from './features/notifications/notifications.component';
+import { AuthService } from './services/auth.service';
+// import { NotificationsComponent } from './features/notifications/notifications.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, TasksComponent, NotificationsComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
+  standalone: true,
+  imports: [RouterOutlet],
+  template: ` <router-outlet></router-outlet> `,
+  styles: [],
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'ToDoApp';
+
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.autoLogin();
+  }
 }

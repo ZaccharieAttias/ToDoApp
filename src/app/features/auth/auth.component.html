@@ -1,1 +1,31 @@
-<p>auth works!</p>
+<div class="auth-container">
+  <nav>
+    <ul class="auth-nav">
+      <li *ngIf="isAuthenticated$ | async">
+        <a style="cursor: pointer" (click)="onLogout()">Logout</a>
+      </li>
+      <li *ngIf="!(isAuthenticated$ | async)">
+        <div class="auth-buttons">
+          <button
+            routerLink="login"
+            routerLinkActive="active"
+            class="btn btn-primary"
+          >
+            Login
+          </button>
+          <button
+            routerLink="register"
+            routerLinkActive="active"
+            class="btn btn-secondary"
+          >
+            Register
+          </button>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="auth-content">
+    <router-outlet></router-outlet>
+  </div>
+</div>
