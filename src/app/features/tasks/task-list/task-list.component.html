@@ -1,1 +1,16 @@
-<p>task-list works!</p>
+<div class="task-list">
+  <div *ngFor="let task of tasks; trackBy: trackByTaskId" class="task-item">
+    <div class="task-content">
+      <h4>{{ task.title }}</h4>
+      <p class="due-date">
+        Date d'échéance: {{ task.dueDate | date : "dd/MM/yyyy" }}
+      </p>
+      <p>{{ task.description }}</p>
+      <p>{{ task.status ? "Completed" : "In progress" }}</p>
+    </div>
+    <div class="task-actions">
+      <button class="btn btn-edit" (click)="onEdit(task)">Modifier</button>
+      <button class="btn btn-delete" (click)="onDelete(task)">Supprimer</button>
+    </div>
+  </div>
+</div>

@@ -1,1 +1,19 @@
-<p>tasks works!</p>
+<div class="tasks-container">
+  <h2>Mes tâches</h2>
+  <app-task-form
+    [taskToEdit]="taskToEdit"
+    (taskSaved)="onTaskSaved($event)"
+    (cancel)="onCancelEdit()"
+  >
+  </app-task-form>
+
+  <div *ngIf="tasks.length === 0" class="no-tasks">
+    <p>Aucune tâche pour le moment. Créez-en une nouvelle !</p>
+  </div>
+  <app-task-list
+    [tasks]="tasks"
+    (editRequested)="onEditTask($event)"
+    (deleteRequested)="onDeleteTask($event.id)"
+  >
+  </app-task-list>
+</div>
