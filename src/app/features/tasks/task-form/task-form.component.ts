@@ -11,62 +11,50 @@ import {
   FormGroup,
   ReactiveFormsModule,
   Validators,
+  FormBuilder,
 } from '@angular/forms';
 import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router } from '@angular/router';
-import { NgIf } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+
 @Component({
   selector: 'app-task-form',
   standalone: true,
-  imports: [ReactiveFormsModule, NgIf],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './task-form.component.html',
   styleUrl: './task-form.component.css',
 })
 export class TaskFormComponent implements OnInit, OnDestroy {
-  @Input() set taskToEdit(value: Task | null) {
-    this._taskToEdit = value;
-    this.updateForm();
-  }
-  get taskToEdit(): Task | null {
-    return this._taskToEdit;
-  }
-  private _taskToEdit: Task | null = null;
-
-  @Output() taskSaved = new EventEmitter<Task>();
+  @Input() taskToEdit: Task | null = null;
+  @Output() formSubmit = new EventEmitter<Task>();
   @Output() cancel = new EventEmitter<void>();
+
+  form: FormGroup;
+  currentTag = new FormControl('');
   submitted = false;
   private destroy$ = new Subject<void>();
 
   constructor(
     private authService: AuthService,
     private taskService: TasksService,
-    private router: Router
-  ) {}
-
-  form = new FormGroup({
-    title: new FormControl('', {
-      validators: [Validators.required],
-    }),
-    description: new FormControl('', { validators: [Validators.required] }),
-    dueDate: new FormControl('', { validators: [Validators.required] }),
-    status: new FormControl(false),
-  });
+    private router: Router,
+    private fb: FormBuilder
+  ) {
+    this.form = this.fb.group({
+      title: ['', [Validators.required]],
+      description: ['', [Validators.required]],
+      dueDate: ['', [Validators.required]],
+      status: [false],
+      tags: [[]],
+    });
+  }
 
   ngOnInit() {
     this.form.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {});
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  private updateForm() {
     if (this.taskToEdit) {
-      // Formater la date pour l'input date
       const dueDate = new Date(this.taskToEdit.dueDate);
       const formattedDate = dueDate.toISOString().split('T')[0];
 
@@ -75,57 +63,67 @@ export class TaskFormComponent implements OnInit, OnDestroy {
         description: this.taskToEdit.description,
         dueDate: formattedDate,
         status: this.taskToEdit.status,
-      });
-    } else {
-      this.form.reset({
-        title: '',
-        description: '',
-        dueDate: '',
-        status: false,
+        tags: this.taskToEdit.tags || [],
       });
     }
   }
 
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   onSubmit() {
-    console.log('Form submitted', this.form.value);
-    if (this.form.invalid) {
-      console.log('Form is invalid');
-      this.form.markAllAsTouched();
-      return;
+    if (this.form.valid) {
+      const userId = this.authService.user$.value?.id;
+      if (!userId) {
+        console.error('No user ID available');
+        return;
+      }
+
+      const formValue = this.form.value;
+      const taskData: Task = {
+        id: this.taskToEdit?.id || Date.now().toString(),
+        uid: userId,
+        title: formValue.title,
+        description: formValue.description,
+        dueDate: new Date(formValue.dueDate),
+        status: formValue.status,
+        tags: formValue.tags || [],
+        createdAt: this.taskToEdit?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      this.formSubmit.emit(taskData);
+      this.submitted = true;
+      this.form.reset();
+      this.currentTag.reset();
     }
-
-    const formValue = this.form.value;
-    const task: Task = {
-      id: this.taskToEdit?.id || new Date().getTime().toString(),
-      uid: this.authService.user$.value?.id || '',
-      title: formValue.title ?? '',
-      description: formValue.description ?? '',
-      status: formValue.status ?? false,
-      dueDate: formValue.dueDate ? new Date(formValue.dueDate) : new Date(),
-    };
-
-    console.log('Emitting task:', task);
-    this.taskSaved.emit(task);
-    this.submitted = true;
-    this.form.reset({
-      title: '',
-      description: '',
-      dueDate: '',
-      status: false,
-    });
-
-    // this.router.navigate(['/users', this.userId(), 'tasks'], {
-    //   replaceUrl: true,
-    // });
   }
 
   onCancel() {
     this.cancel.emit();
-    this.form.reset({
-      title: '',
-      description: '',
-      dueDate: '',
-      status: false,
+    this.form.reset();
+    this.currentTag.reset();
+  }
+
+  addTag() {
+    const tag = this.currentTag.value?.trim();
+    if (tag) {
+      const currentTags = this.form.get('tags')?.value || [];
+      if (!currentTags.includes(tag)) {
+        this.form.patchValue({
+          tags: [...currentTags, tag],
+        });
+      }
+      this.currentTag.reset();
+    }
+  }
+
+  removeTag(tagToRemove: string) {
+    const currentTags = this.form.get('tags')?.value || [];
+    this.form.patchValue({
+      tags: currentTags.filter((tag: string) => tag !== tagToRemove),
     });
   }
 }

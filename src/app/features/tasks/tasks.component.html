@@ -2,7 +2,7 @@
   <h2>Mes tâches</h2>
   <app-task-form
     [taskToEdit]="taskToEdit"
-    (taskSaved)="onTaskSaved($event)"
+    (formSubmit)="onTaskSaved($event)"
     (cancel)="onCancelEdit()"
   >
   </app-task-form>

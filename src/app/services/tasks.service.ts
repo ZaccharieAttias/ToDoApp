@@ -10,7 +10,7 @@ export class TasksService {
   private tasksSubject = new BehaviorSubject<Task[]>([]);
   tasks$ = this.tasksSubject.asObservable();
 
-  constructor(private authService: AuthService) {
+  constructor() {
     if (this.isBrowser()) {
       const tasks = localStorage.getItem('tasks');
       if (tasks) {

@@ -5,5 +5,7 @@ export interface Task {
   description: string;
   dueDate: Date;
   status: boolean;
-  //   tags: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
 }
