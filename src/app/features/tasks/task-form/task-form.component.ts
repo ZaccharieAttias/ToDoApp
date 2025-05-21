@@ -17,7 +17,7 @@ import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, BehaviorSubject } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -28,10 +28,15 @@ import { AuthService } from '../../../services/auth.service';
   styleUrl: './task-form.component.css',
 })
 export class TaskFormComponent implements OnInit, OnDestroy {
-  @Input() taskToEdit: Task | null = null;
+  @Input() set taskToEdit(task: Task | null) {
+    if (task) {
+      this.taskToEdit$.next(task);
+    }
+  }
   @Output() formSubmit = new EventEmitter<Task>();
   @Output() cancel = new EventEmitter<void>();
 
+  private taskToEdit$ = new BehaviorSubject<Task | null>(null);
   form: FormGroup;
   currentTag = new FormControl('');
   submitted = false;
@@ -53,19 +58,27 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.form.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {});
-    if (this.taskToEdit) {
-      const dueDate = new Date(this.taskToEdit.dueDate);
-      const formattedDate = dueDate.toISOString().split('T')[0];
+    // subscription to taskToEdit
+    this.taskToEdit$.pipe(takeUntil(this.destroy$)).subscribe((task) => {
+      if (task) {
+        console.log('Task to edit received:', task);
+        const dueDate = new Date(task.dueDate);
+        const formattedDate = dueDate.toISOString().split('T')[0];
 
-      this.form.patchValue({
-        title: this.taskToEdit.title,
-        description: this.taskToEdit.description,
-        dueDate: formattedDate,
-        status: this.taskToEdit.status,
-        tags: this.taskToEdit.tags || [],
-      });
-    }
+        this.form.patchValue({
+          title: task.title,
+          description: task.description,
+          dueDate: formattedDate,
+          status: task.status,
+          tags: task.tags || [],
+        });
+      }
+    });
+
+    // subscription to form value changes
+    this.form.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      console.log('Form values changed:', this.form.value);
+    });
   }
 
   ngOnDestroy() {
@@ -83,14 +96,15 @@ export class TaskFormComponent implements OnInit, OnDestroy {
 
       const formValue = this.form.value;
       const taskData: Task = {
-        id: this.taskToEdit?.id || Date.now().toString(),
+        id: this.taskToEdit$.value?.id || Date.now().toString(),
         uid: userId,
         title: formValue.title,
         description: formValue.description,
         dueDate: new Date(formValue.dueDate),
         status: formValue.status,
         tags: formValue.tags || [],
-        createdAt: this.taskToEdit?.createdAt || new Date().toISOString(),
+        createdAt:
+          this.taskToEdit$.value?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
@@ -134,7 +148,7 @@ export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
   if (component.submitted) {
     return true;
   }
-  // Check if the form is completely filled
+
   if (component.form.dirty) {
     return window.confirm(
       'Do you really want to leave? You will lose the entered data.'

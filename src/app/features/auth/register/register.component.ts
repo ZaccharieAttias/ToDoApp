@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { debounceTime } from 'rxjs';
-import { AuthService } from '../../../services/auth.service'; // Adjust the path as needed
+import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
 
 function equalValues(controlName1: string, controlName2: string) {
@@ -59,7 +59,6 @@ export class RegisterComponent implements OnInit {
     );
 
     if (isLogin) this.router.navigate(['/dashboard']);
-    // else
   }
 
   get emailIsInvalid() {

@@ -78,7 +78,7 @@ export class AuthService {
       if (currentUser) {
         try {
           const parsedUser = JSON.parse(currentUser);
-          // Vérifier si l'utilisateur existe toujours dans allUsers
+          // check if user exists in allUsers
           const userExists = this.allUsers.some(
             (user) => user.email === parsedUser.email
           );

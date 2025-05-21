@@ -43,7 +43,6 @@ export class LoginComponent implements OnInit {
       if (isLogin) {
         this.router.navigate(['/dashboard']);
       } else {
-        // Gérer l'erreur de connexion
         console.error('Login failed');
       }
     }

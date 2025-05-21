@@ -28,7 +28,7 @@ export class TasksService {
   addTask(task: Task) {
     console.log('Adding task to service:', task);
     const currentTasks = this.tasksSubject.value;
-    // Vérifier si la tâche existe déjà
+    // check if task exists
     const taskExists = currentTasks.some((t) => t.id === task.id);
     if (!taskExists) {
       console.log('Task does not exist, adding to list');
@@ -53,6 +53,8 @@ export class TasksService {
             description: updatedTask.description,
             status: updatedTask.status,
             dueDate: updatedTask.dueDate,
+            tags: updatedTask.tags,
+            updatedAt: new Date().toISOString(),
           };
         }
         return task;
