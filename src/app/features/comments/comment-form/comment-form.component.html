@@ -1,1 +1,38 @@
-<p>comment-form works!</p>
+<form [formGroup]="commentForm" (ngSubmit)="onSubmit()" class="comment-form">
+  <div class="form-group">
+    <textarea
+      formControlName="content"
+      placeholder="Écrivez votre commentaire..."
+      rows="3"
+      [class.is-invalid]="
+        commentForm.get('content')?.invalid &&
+        commentForm.get('content')?.touched
+      "
+      appMentionDirective
+    ></textarea>
+    <div
+      class="invalid-feedback"
+      *ngIf="
+        commentForm.get('content')?.invalid &&
+        commentForm.get('content')?.touched
+      "
+    >
+      <span *ngIf="commentForm.get('content')?.errors?.['required']"
+        >Le commentaire est requis</span
+      >
+      <span *ngIf="commentForm.get('content')?.errors?.['minlength']"
+        >Le commentaire doit faire au moins 3 caractères</span
+      >
+      <span *ngIf="commentForm.get('content')?.errors?.['maxlength']"
+        >Le commentaire ne doit pas dépasser 100 caractères</span
+      >
+    </div>
+  </div>
+  <button
+    type="submit"
+    class="btn btn-primary"
+    [disabled]="commentForm.invalid"
+  >
+    Ajouter un commentaire
+  </button>
+</form>

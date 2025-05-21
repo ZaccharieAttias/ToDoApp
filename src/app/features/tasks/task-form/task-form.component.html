@@ -1,5 +1,5 @@
 <div class="task-form">
-  <h3>{{ taskToEdit ? "Modifier la tâche" : "Nouvelle tâche" }}</h3>
+  <h3>{{ (isEditing$ | async) ? "Modifier la tâche" : "Nouvelle tâche" }}</h3>
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
     <div class="form-group">
       <label for="title">Titre</label>
@@ -93,7 +93,7 @@
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">
-        {{ taskToEdit ? "Mettre à jour" : "Créer" }}
+        {{ (isEditing$ | async) ? "Mettre à jour" : "Créer" }}
       </button>
       <button type="button" class="btn btn-secondary" (click)="onCancel()">
         Annuler

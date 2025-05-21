@@ -7,6 +7,7 @@ import { TaskListComponent } from './task-list/task-list.component';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
+import { CommentService } from '../../services/comment.service';
 @Component({
   selector: 'app-tasks',
   standalone: true,
@@ -18,12 +19,13 @@ export class TasksComponent implements OnInit, OnDestroy {
   private tasksService = inject(TasksService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private commentService = inject(CommentService);
   tasks: Task[] = [];
   taskToEdit: Task | null = null;
   private destroy$ = new Subject<void>();
 
   ngOnInit() {
-    const userId = this.authService.user$.value?.id;
+    const userId = this.authService.getCurrentUser()?.id;
     if (userId) {
       this.tasksService
         .getUserTasks(userId)

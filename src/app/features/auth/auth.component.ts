@@ -19,7 +19,7 @@ import { map } from 'rxjs/operators';
 export class AuthComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
-  isAuthenticated$ = this.authService.user$.pipe(map((user) => !!user));
+  isAuthenticated$ = this.authService.currentUser$.pipe(map((user) => !!user));
 
   onLogout() {
     this.authService.logout();

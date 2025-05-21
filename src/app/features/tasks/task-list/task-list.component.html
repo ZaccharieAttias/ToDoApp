@@ -31,11 +31,21 @@
         "
         class="task-item"
       >
-        <div class="task-content">
-          <h4>{{ task.title }}</h4>
-          <p class="due-date">
-            Date d'échéance: {{ task.dueDate | date : "dd/MM/yyyy" }}
-          </p>
+        <div class="task-content" (click)="toggleTaskExpansion(task.id)">
+          <div class="task-header">
+            <h4>{{ task.title }}</h4>
+            <div class="task-meta">
+              <span
+                class="comments-count"
+                *ngIf="taskCommentsCount.get(task.id)"
+              >
+                {{ taskCommentsCount.get(task.id) }} commentaire(s)
+              </span>
+              <span class="due-date">
+                Date d'échéance: {{ task.dueDate | date : "dd/MM/yyyy" }}
+              </span>
+            </div>
+          </div>
           <p>{{ task.description }}</p>
           <p>{{ task.status ? "Completed" : "In progress" }}</p>
           <div class="task-tags" *ngIf="task.tags?.length">
@@ -49,6 +59,13 @@
           <button class="btn btn-delete" (click)="onDelete(task)">
             Supprimer
           </button>
+        </div>
+        <div class="comments-section" *ngIf="isTaskExpanded(task.id)">
+          <app-comment-form
+            [taskId]="task.id"
+            (onCommentAdded)="updateCommentsCount(task.id)"
+          ></app-comment-form>
+          <app-comment-list [taskId]="task.id"></app-comment-list>
         </div>
       </div>
     </ng-container>

@@ -23,7 +23,7 @@ export class NoAuthGuard implements CanActivate {
     | UrlTree
     | Promise<boolean | UrlTree>
     | Observable<boolean | UrlTree> {
-    return this.authService.user$.pipe(
+    return this.authService.currentUser$.pipe(
       take(1),
       map((user) => {
         const isAuth = !!user;

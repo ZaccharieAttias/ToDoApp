@@ -28,7 +28,7 @@ export class TasksService {
   addTask(task: Task) {
     console.log('Adding task to service:', task);
     const currentTasks = this.tasksSubject.value;
-    // check if task exists
+
     const taskExists = currentTasks.some((t) => t.id === task.id);
     if (!taskExists) {
       console.log('Task does not exist, adding to list');
@@ -77,6 +77,12 @@ export class TasksService {
       console.log('Saving tasks after deletion to localStorage');
       this.saveTasks();
     }
+  }
+
+  getTaskById(id: string) {
+    return this.tasks$.pipe(
+      map((tasks) => tasks.find((task) => task.id === id))
+    );
   }
 
   private saveTasks() {

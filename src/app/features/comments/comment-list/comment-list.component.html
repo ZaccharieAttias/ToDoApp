@@ -1,1 +1,79 @@
-<p>comment-list works!</p>
+<div class="comments-list">
+  <div *ngIf="comments.length === 0" class="no-comments">
+    Aucun commentaire pour le moment.
+  </div>
+
+  <div *ngFor="let comment of comments" class="comment-item">
+    <div class="comment-header">
+      <div class="comment-meta">
+        <span class="comment-author">{{ comment.userName }}</span>
+        <span class="comment-date">{{
+          comment.createdAt | date : "dd/MM/yyyy HH:mm"
+        }}</span>
+      </div>
+
+      <div
+        class="comment-actions"
+        *ngIf="
+          (isCommentOwner(comment) || isTaskOwner()) &&
+          editingCommentId !== comment.id
+        "
+      >
+        <button
+          *ngIf="isCommentOwner(comment)"
+          class="btn btn-edit"
+          (click)="startEditing(comment)"
+          [disabled]="isSubmitting"
+        >
+          Modifier
+        </button>
+        <button
+          class="btn btn-delete"
+          (click)="deleteComment(comment)"
+          [disabled]="isSubmitting"
+        >
+          Supprimer
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="editingCommentId === comment.id" class="comment-edit">
+      <textarea
+        [(ngModel)]="editedContent"
+        class="edit-textarea"
+        [disabled]="isSubmitting"
+        placeholder="Modifier votre commentaire..."
+      >
+      </textarea>
+      <div class="edit-actions">
+        <button
+          class="btn btn-save"
+          (click)="saveEdit(comment)"
+          [disabled]="isSubmitting || !editedContent.trim()"
+        >
+          {{ isSubmitting ? "Enregistrement..." : "Enregistrer" }}
+        </button>
+        <button
+          class="btn btn-cancel"
+          (click)="cancelEditing()"
+          [disabled]="isSubmitting"
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="editingCommentId !== comment.id" class="comment-content">
+      <span [innerHTML]="comment.content | mention : userDisplayNames"></span>
+      <span
+        *ngIf="
+          comment.updatedAt &&
+          comment.updatedAt.getTime() !== comment.createdAt.getTime()
+        "
+        class="comment-edited"
+      >
+        (modifié le {{ comment.updatedAt | date : "dd/MM/yyyy HH:mm" }})
+      </span>
+    </div>
+  </div>
+</div>

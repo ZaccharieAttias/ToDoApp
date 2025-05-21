@@ -17,7 +17,7 @@ import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subject, takeUntil, BehaviorSubject } from 'rxjs';
+import { Subject, takeUntil, BehaviorSubject, debounceTime } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -37,6 +37,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   @Output() cancel = new EventEmitter<void>();
 
   private taskToEdit$ = new BehaviorSubject<Task | null>(null);
+  isEditing$ = new BehaviorSubject<boolean>(false);
   form: FormGroup;
   currentTag = new FormControl('');
   submitted = false;
@@ -58,7 +59,6 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // subscription to taskToEdit
     this.taskToEdit$.pipe(takeUntil(this.destroy$)).subscribe((task) => {
       if (task) {
         console.log('Task to edit received:', task);
@@ -72,13 +72,17 @@ export class TaskFormComponent implements OnInit, OnDestroy {
           status: task.status,
           tags: task.tags || [],
         });
+        this.isEditing$.next(true);
+      } else {
+        this.isEditing$.next(false);
       }
     });
 
-    // subscription to form value changes
-    this.form.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      console.log('Form values changed:', this.form.value);
-    });
+    this.form.valueChanges
+      .pipe(debounceTime(1000), takeUntil(this.destroy$))
+      .subscribe(() => {
+        console.log('Form values changed:', this.form.value);
+      });
   }
 
   ngOnDestroy() {
@@ -88,7 +92,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
 
   onSubmit() {
     if (this.form.valid) {
-      const userId = this.authService.user$.value?.id;
+      const userId = this.authService.getCurrentUser()?.id;
       if (!userId) {
         console.error('No user ID available');
         return;
@@ -112,6 +116,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       this.submitted = true;
       this.form.reset();
       this.currentTag.reset();
+      this.isEditing$.next(false);
     }
   }
 
@@ -119,6 +124,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     this.cancel.emit();
     this.form.reset();
     this.currentTag.reset();
+    this.isEditing$.next(false);
   }
 
   addTag() {

@@ -68,8 +68,8 @@
 .task-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
 }
 
 .task-title {
@@ -110,7 +110,7 @@
 
 .task-meta {
   display: flex;
-  justify-content: space-between;
+  gap: var(--spacing-md);
   align-items: center;
   font-size: 0.875rem;
   color: var(--text-secondary);
@@ -248,4 +248,43 @@
   background-color: var(--primary-color);
   color: white;
   transform: translateY(-1px);
+}
+
+.task-content {
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.task-content:hover {
+  background-color: var(--surface-hover);
+}
+
+.comments-count {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--primary-color);
+}
+
+.comments-count::before {
+  content: '💬';
+  font-size: 1rem;
+}
+
+.comments-section {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
