@@ -7,13 +7,7 @@
     </button>
   </div>
 
-  <app-task-form
-    *ngIf="showForm"
-    [taskToEdit]="taskToEdit"
-    (formSubmit)="onTaskSaved($event)"
-    (cancel)="onCancelEdit()"
-  >
-  </app-task-form>
+  <app-task-form *ngIf="showForm" (cancel)="onCancelEdit()"> </app-task-form>
 
   <div *ngIf="!showForm">
     <div *ngIf="tasks.length === 0" class="no-tasks">
