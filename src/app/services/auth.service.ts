@@ -11,9 +11,7 @@ export class AuthService {
   private users: User[] = [];
   private notificationService = inject(NotificationService);
 
-  get currentUser$(): Observable<User | null> {
-    return this.currentUserSubject.asObservable();
-  }
+  currentUser$ = this.currentUserSubject.asObservable();
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;

@@ -214,3 +214,68 @@ input[type="checkbox"] {
 .btn-remove-tag:hover {
   color: var(--danger-color);
 }
+
+.users-selection-container {
+  margin-top: var(--spacing-sm);
+}
+
+.selected-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.selected-user {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  gap: var(--spacing-xs);
+}
+
+.remove-user {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity var(--transition-normal);
+}
+
+.remove-user:hover {
+  opacity: 1;
+}
+
+.available-users {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.user-option {
+  background-color: var(--background-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-size: 0.875rem;
+}
+
+.user-option:hover {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color-light);
+}
+
+.user-option.selected {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}

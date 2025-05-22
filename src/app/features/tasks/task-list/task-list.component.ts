@@ -1,23 +1,22 @@
-import {
-  Component,
-  DestroyRef,
-  EventEmitter,
-  inject,
-  Input,
-  OnInit,
-  Output,
-} from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Task } from '../../../models/task.model';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { BehaviorSubject, Subject, takeUntil } from 'rxjs';
-import { TasksService } from '../../../services/tasks.service';
-import { AuthService } from '../../../services/auth.service';
+import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
+import {
+  BehaviorSubject,
+  Observable,
+  Subject,
+  takeUntil,
+  combineLatest,
+} from 'rxjs';
 import { FilterByStatusPipe } from '../../../shared/pipes/filter-by-status.pipe';
 import { CommentService } from '../../../services/comment.service';
 import { CommentListComponent } from '../../comments/comment-list/comment-list.component';
 import { CommentFormComponent } from '../../comments/comment-form/comment-form.component';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../models/user.model';
+import { MentionPipe } from '../../../shared/pipes/mention.pipe';
 
 @Component({
   selector: 'app-task-list',
@@ -28,53 +27,65 @@ import { CommentFormComponent } from '../../comments/comment-form/comment-form.c
     FilterByStatusPipe,
     CommentListComponent,
     CommentFormComponent,
+    MentionPipe,
   ],
   templateUrl: './task-list.component.html',
   styleUrls: ['./task-list.component.css'],
 })
 export class TaskListComponent implements OnInit {
   @Input() set tasks(value: Task[]) {
-    this.tasks$.next(value);
+    this.originalTasks$.next(value);
+    this.filterTasks();
     this.resetExpandedTasks();
   }
   @Output() editRequested = new EventEmitter<Task>();
   @Output() deleteRequested = new EventEmitter<Task>();
-  private destroy$ = new Subject<void>();
 
+  private originalTasks$ = new BehaviorSubject<Task[]>([]);
   private tasks$ = new BehaviorSubject<Task[]>([]);
+  private destroy$ = new Subject<void>();
+  taskCommentsCount = new Map<string, number>();
+  currentUserId: string | undefined;
+  users: User[] = [];
+  userDisplayNames: string[] = [];
   searchControl = new FormControl('');
   statusFilter = new FormControl('all');
-  filteredTasks$ = new BehaviorSubject<Task[]>([]);
   expandedTasks = new Set<string>();
-  taskCommentsCount = new Map<string, number>();
+
+  get currentTasks(): Observable<Task[]> {
+    return this.tasks$.asObservable();
+  }
+
+  get currentStatus(): string {
+    return this.statusFilter.value || 'all';
+  }
 
   constructor(
-    private tasksService: TasksService,
-    private authService: AuthService,
-    private commentService: CommentService
-  ) {}
+    private commentService: CommentService,
+    private authService: AuthService
+  ) {
+    this.currentUserId = this.authService.getCurrentUser()?.id;
+    this.users = this.authService.getUsers();
+  }
 
   ngOnInit() {
-    this.searchControl.valueChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.filterTasks();
-        this.resetExpandedTasks();
-      });
-
-    this.statusFilter.valueChanges
+    combineLatest([
+      this.searchControl.valueChanges.pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        startWith('')
+      ),
+      this.statusFilter.valueChanges.pipe(startWith('all')),
+    ])
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.filterTasks();
-        this.resetExpandedTasks();
       });
 
-    this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
-      this.filterTasks();
-      this.resetExpandedTasks();
-    });
-
     this.loadCommentsCount();
+    this.userDisplayNames = this.authService
+      .getUsers()
+      .map((u) => u.displayName);
   }
 
   private resetExpandedTasks(): void {
@@ -83,25 +94,18 @@ export class TaskListComponent implements OnInit {
 
   private filterTasks(): void {
     const searchTerm = this.searchControl.value?.toLowerCase() || '';
-    const statusFilter = this.statusFilter.value || 'all';
+    const currentTasks = this.originalTasks$.getValue();
 
-    this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
-      const filtered = tasks.filter((task) => {
-        const matchesSearch =
-          task.title.toLowerCase().includes(searchTerm) ||
-          task.description.toLowerCase().includes(searchTerm) ||
-          task.tags?.some((tag) => tag.toLowerCase().includes(searchTerm));
-
-        const matchesStatus =
-          statusFilter === 'all' ||
-          (statusFilter === 'completed' && task.status) ||
-          (statusFilter === 'pending' && !task.status);
-
-        return matchesSearch && matchesStatus;
-      });
-
-      this.filteredTasks$.next(filtered);
+    const filtered = currentTasks.filter((task) => {
+      return (
+        task.title.toLowerCase().includes(searchTerm) ||
+        task.description.toLowerCase().includes(searchTerm) ||
+        task.tags?.some((tag) => tag.toLowerCase().includes(searchTerm))
+      );
     });
+
+    this.tasks$.next(filtered);
+    this.resetExpandedTasks();
   }
 
   private loadCommentsCount(): void {
@@ -153,5 +157,25 @@ export class TaskListComponent implements OnInit {
     console.log('Delete requested for task:', task);
     this.deleteRequested.emit(task);
     this.resetExpandedTasks();
+  }
+
+  isTaskOwner(task: Task): boolean {
+    return task.uid === this.currentUserId;
+  }
+
+  getSharedUsers(task: Task): User[] {
+    if (!task.sharedWith) return [];
+    return this.users.filter((user) => task.sharedWith?.includes(user.id));
+  }
+
+  getSharedWithText(task: Task): string {
+    if (!task.sharedWith?.length) return '';
+    const sharedUsers = this.getSharedUsers(task);
+    if (this.isTaskOwner(task)) {
+      return `Shared with: ${sharedUsers.map((u) => u.displayName).join(', ')}`;
+    } else {
+      const owner = this.users.find((u) => u.id === task.uid);
+      return `Shared by: ${owner?.displayName || 'Unknown'}`;
+    }
   }
 }

@@ -2,7 +2,6 @@ import { Component, DestroyRef, inject, Input, OnInit } from '@angular/core';
 import { CommentService } from '../../../services/comment.service';
 import { Comment } from '../../../models/comment.model';
 import { CommonModule, DatePipe } from '@angular/common';
-import { BehaviorSubject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../services/auth.service';
 import { TasksService } from '../../../services/tasks.service';
@@ -19,13 +18,13 @@ import { MentionPipe } from '../../../shared/pipes/mention.pipe';
 export class CommentListComponent implements OnInit {
   @Input() taskId: string = '';
   comments: Comment[] = [];
-  private destroyRef = inject(DestroyRef);
   editingCommentId: string | null = null;
   editedContent: string = '';
   currentUserId: string | null = null;
   taskOwnerId: string | null = null;
   isSubmitting: boolean = false;
   userDisplayNames: string[] = [];
+  private destroyRef = inject(DestroyRef);
 
   constructor(
     private commentService: CommentService,

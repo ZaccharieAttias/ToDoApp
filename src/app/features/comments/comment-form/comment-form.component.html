@@ -2,7 +2,7 @@
   <div class="form-group">
     <textarea
       formControlName="content"
-      placeholder="Écrivez votre commentaire..."
+      placeholder="Write your comment..."
       rows="3"
       [class.is-invalid]="
         commentForm.get('content')?.invalid &&
@@ -18,13 +18,13 @@
       "
     >
       <span *ngIf="commentForm.get('content')?.errors?.['required']"
-        >Le commentaire est requis</span
+        >The comment is required</span
       >
       <span *ngIf="commentForm.get('content')?.errors?.['minlength']"
-        >Le commentaire doit faire au moins 3 caractères</span
+        >The comment must be at least 3 characters</span
       >
       <span *ngIf="commentForm.get('content')?.errors?.['maxlength']"
-        >Le commentaire ne doit pas dépasser 100 caractères</span
+        >The comment must not exceed 100 characters</span
       >
     </div>
   </div>
@@ -33,6 +33,6 @@
     class="btn btn-primary"
     [disabled]="commentForm.invalid"
   >
-    Ajouter un commentaire
+    Add a comment
   </button>
 </form>

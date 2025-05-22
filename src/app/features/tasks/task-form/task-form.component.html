@@ -1,8 +1,8 @@
 <div class="task-form">
-  <h3>{{ (isEditing$ | async) ? "Modifier la tâche" : "Nouvelle tâche" }}</h3>
+  <h3>{{ (isEditing$ | async) ? "Edit the task" : "New task" }}</h3>
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
     <div class="form-group">
-      <label for="title">Titre</label>
+      <label for="title">Title</label>
       <input
         type="text"
         id="title"
@@ -15,7 +15,7 @@
         class="invalid-feedback"
         *ngIf="form.get('title')?.invalid && form.get('title')?.touched"
       >
-        Le titre est requis
+        The title is required
       </div>
     </div>
 
@@ -28,6 +28,7 @@
         [class.is-invalid]="
           form.get('description')?.invalid && form.get('description')?.touched
         "
+        appMentionDirective
       ></textarea>
       <div
         class="invalid-feedback"
@@ -35,12 +36,12 @@
           form.get('description')?.invalid && form.get('description')?.touched
         "
       >
-        La description est requise
+        The description is required
       </div>
     </div>
 
     <div class="form-group">
-      <label for="dueDate">Date d'échéance</label>
+      <label for="dueDate">Due date</label>
       <input
         type="date"
         id="dueDate"
@@ -53,14 +54,14 @@
         class="invalid-feedback"
         *ngIf="form.get('dueDate')?.invalid && form.get('dueDate')?.touched"
       >
-        La date d'échéance est requise
+        The due date is required
       </div>
     </div>
 
     <div class="form-group">
       <label class="checkbox-label">
         <input type="checkbox" formControlName="status" />
-        Tâche terminée
+        Task completed
       </label>
     </div>
 
@@ -71,11 +72,11 @@
           type="text"
           id="tags"
           [formControl]="currentTag"
-          placeholder="Ajouter un tag..."
+          placeholder="Add a tag..."
           (keyup.enter)="addTag()"
         />
         <button type="button" class="btn btn-add-tag" (click)="addTag()">
-          Ajouter
+          Add a tag
         </button>
       </div>
       <div class="tags-container" *ngIf="form.get('tags')?.value?.length">
@@ -91,12 +92,41 @@
       </div>
     </div>
 
+    <div class="form-group">
+      <label for="shared-users">Share with users (select manually)</label>
+      <div class="users-selection-container">
+        <div class="selected-users" *ngIf="selectedUsers.length">
+          <div class="selected-user" *ngFor="let user of selectedUsers">
+            <span class="user-name">{{ user.displayName }}</span>
+            <button
+              type="button"
+              class="remove-user"
+              (click)="toggleUserSelection(user)"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="available-users">
+          <button
+            type="button"
+            class="user-option"
+            *ngFor="let user of availableUsers"
+            [class.selected]="isUserSelected(user)"
+            (click)="toggleUserSelection(user)"
+          >
+            {{ user.displayName }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary">
-        {{ (isEditing$ | async) ? "Mettre à jour" : "Créer" }}
+        {{ (isEditing$ | async) ? "Update" : "Create" }}
       </button>
       <button type="button" class="btn btn-secondary" (click)="onCancel()">
-        Annuler
+        Cancel
       </button>
     </div>
   </form>

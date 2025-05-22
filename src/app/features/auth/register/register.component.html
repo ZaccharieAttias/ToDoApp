@@ -1,6 +1,5 @@
 <div class="auth-form-container">
   <h1>Create Account</h1>
-  <h2>Join our community</h2>
   <p>We just need a little bit of data from you to get you started 🚀</p>
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -43,12 +42,12 @@
     </div>
 
     <div class="form-group">
-      <label for="displayName">First Name</label>
+      <label for="displayName">User Name</label>
       <input
         id="displayName"
         type="text"
         formControlName="displayName"
-        placeholder="Enter your first name"
+        placeholder="Enter your user name"
       />
     </div>
 

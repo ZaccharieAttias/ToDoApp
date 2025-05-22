@@ -4,11 +4,11 @@ import {
   FormGroup,
   FormControl,
   Validators,
-  AbstractControl,
 } from '@angular/forms';
-import { debounceTime, of } from 'rxjs';
+import { debounceTime } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
+import { NotificationService } from '../../../services/notification.service';
 
 let initialEmailValue = '';
 
@@ -20,18 +20,35 @@ let initialEmailValue = '';
   styleUrls: ['./login.component.css'],
 })
 export class LoginComponent implements OnInit {
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private notificationService: NotificationService,
+    private router: Router
+  ) {}
 
-  private destroyRef = inject(DestroyRef);
   form = new FormGroup({
     email: new FormControl(initialEmailValue, {
       validators: [Validators.email, Validators.required],
-      asyncValidators: [],
     }),
     password: new FormControl('', {
       validators: [Validators.required, Validators.minLength(6)],
     }),
   });
+  private destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+    const subscription = this.form.valueChanges
+      .pipe(debounceTime(500))
+      .subscribe({
+        next: (value) => {
+          localStorage.setItem(
+            'saved-login-form',
+            JSON.stringify({ email: value.email })
+          );
+        },
+      });
+    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  }
 
   onSubmit() {
     if (this.form.valid) {
@@ -43,7 +60,7 @@ export class LoginComponent implements OnInit {
       if (isLogin) {
         this.router.navigate(['/dashboard']);
       } else {
-        console.error('Login failed');
+        this.notificationService.error('Login failed');
       }
     }
   }
@@ -62,19 +79,5 @@ export class LoginComponent implements OnInit {
       this.form.controls.password.dirty &&
       this.form.controls.password.invalid
     );
-  }
-
-  ngOnInit(): void {
-    const subscription = this.form.valueChanges
-      .pipe(debounceTime(500))
-      .subscribe({
-        next: (value) => {
-          localStorage.setItem(
-            'saved-login-form',
-            JSON.stringify({ email: value.email })
-          );
-        },
-      });
-    this.destroyRef.onDestroy(() => subscription.unsubscribe());
   }
 }

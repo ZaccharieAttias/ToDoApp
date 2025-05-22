@@ -1,13 +1,11 @@
 <div class="user-container">
   <header class="user-header">
-    <h1>Bienvenue, {{ userName }} !</h1>
+    <h1>Welcome, {{ userName }} !</h1>
   </header>
 
   <nav class="user-nav">
-    <a [routerLink]="['dashboard']" routerLinkActive="active"
-      >Tableau de bord</a
-    >
-    <a [routerLink]="['tasks']" routerLinkActive="active">Tâches</a>
+    <a [routerLink]="['dashboard']" routerLinkActive="active">Dashboard</a>
+    <a [routerLink]="['tasks']" routerLinkActive="active">Tasks</a>
   </nav>
 
   <main class="user-content">

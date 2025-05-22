@@ -288,3 +288,32 @@
     transform: translateY(0);
   }
 }
+
+.task-sharing {
+  margin-top: var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+.sharing-info {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--primary-color);
+  background-color: var(--primary-color-light);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+}
+
+.sharing-info::before {
+  content: '👥';
+  font-size: 1rem;
+}
+
+.sharing-info.shared-by {
+  color: var(--secondary-color);
+  background-color: var(--secondary-color-light);
+}
+
+.sharing-info.shared-by::before {
+  content: '📤';
+}

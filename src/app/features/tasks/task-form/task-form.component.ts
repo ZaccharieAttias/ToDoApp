@@ -1,11 +1,4 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  OnDestroy,
-  OnInit,
-} from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -17,29 +10,16 @@ import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subject, takeUntil, BehaviorSubject, debounceTime } from 'rxjs';
+import { Subject, BehaviorSubject } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
-
-export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
-  component
-) => {
-  if (component.submitted) {
-    return true;
-  }
-
-  if (component.form.dirty) {
-    return window.confirm(
-      'Voulez-vous vraiment quitter ? Vous perdrez les données saisies.'
-    );
-  }
-  return true;
-};
+import { User } from '../../../models/user.model';
+import { MentionDirective } from '../../../shared/directives/mention.directive';
 
 @Component({
   selector: 'app-task-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, MentionDirective],
   templateUrl: './task-form.component.html',
   styleUrl: './task-form.component.css',
 })
@@ -47,9 +27,11 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   private taskToEdit$ = new BehaviorSubject<Task | null>(null);
   isEditing$ = new BehaviorSubject<boolean>(false);
   form: FormGroup;
-  currentTag = new FormControl('');
   submitted = false;
+  currentTag = new FormControl('');
   private destroy$ = new Subject<void>();
+  availableUsers: User[] = [];
+  selectedUsers: User[] = [];
 
   constructor(
     private authService: AuthService,
@@ -65,11 +47,16 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       dueDate: ['', [Validators.required]],
       status: [false],
       tags: [[]],
+      sharedWith: [[]],
     });
   }
 
   ngOnInit() {
-    // Vérifier si nous sommes en mode édition
+    // Charger la liste des utilisateurs disponibles
+    this.availableUsers = this.authService
+      .getUsers()
+      .filter((user) => user.id !== this.authService.getCurrentUser()?.id);
+
     this.route.params.subscribe((params) => {
       if (params['id']) {
         const taskId = params['id'];
@@ -84,7 +71,16 @@ export class TaskFormComponent implements OnInit, OnDestroy {
               dueDate: formattedDate,
               status: task.status,
               tags: task.tags || [],
+              sharedWith: task.sharedWith || [],
             });
+
+            // Mettre à jour la liste des utilisateurs sélectionnés
+            if (task.sharedWith) {
+              this.selectedUsers = this.availableUsers.filter((user) =>
+                task.sharedWith?.includes(user.id)
+              );
+            }
+
             this.isEditing$.next(true);
             this.taskToEdit$.next(task);
           }
@@ -103,6 +99,8 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       const userId = this.authService.getCurrentUser()?.id;
       if (!userId) {
         console.error('No user ID available');
+        this.notificationService.error('The user was disconnected');
+        this.router.navigate(['/login']);
         return;
       }
 
@@ -115,6 +113,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
         dueDate: new Date(formValue.dueDate),
         status: formValue.status,
         tags: formValue.tags || [],
+        sharedWith: formValue.sharedWith || [],
         createdAt:
           this.taskToEdit$.value?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -132,7 +131,6 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       const isEditing = this.isEditing$.value;
       this.isEditing$.next(false);
 
-      // Navigation vers la liste des tâches
       if (isEditing) {
         this.router.navigate(['../../'], { relativeTo: this.route });
       } else {
@@ -146,7 +144,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     this.currentTag.reset();
     const isEditing = this.isEditing$.value;
     this.isEditing$.next(false);
-    // Navigation vers la liste des tâches
+
     if (isEditing) {
       this.router.navigate(['../../'], { relativeTo: this.route });
     } else {
@@ -173,4 +171,48 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       tags: currentTags.filter((tag: string) => tag !== tagToRemove),
     });
   }
+
+  toggleUserSelection(user: User) {
+    const currentSharedWith = this.form.get('sharedWith')?.value || [];
+    const userIndex = currentSharedWith.indexOf(user.id);
+
+    if (userIndex === -1) {
+      this.form.patchValue({
+        sharedWith: [...currentSharedWith, user.id],
+      });
+      this.selectedUsers.push(user);
+    } else {
+      this.form.patchValue({
+        sharedWith: currentSharedWith.filter((id: string) => id !== user.id),
+      });
+      this.selectedUsers = this.selectedUsers.filter((u) => u.id !== user.id);
+    }
+
+    if (this.isEditing$.value && this.taskToEdit$.value) {
+      const updatedTask: Task = {
+        ...this.taskToEdit$.value,
+        sharedWith: this.form.get('sharedWith')?.value || [],
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  isUserSelected(user: User): boolean {
+    return this.selectedUsers.some((u) => u.id === user.id);
+  }
 }
+
+export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
+  component
+) => {
+  if (component.submitted) {
+    return true;
+  }
+
+  if (component.form.dirty) {
+    return window.confirm(
+      'Do you really want to leave? You will lose the data you have entered.'
+    );
+  }
+  return true;
+};

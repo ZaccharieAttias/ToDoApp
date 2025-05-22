@@ -9,6 +9,7 @@ import {
 import { debounceTime } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
+import { NotificationService } from '../../../services/notification.service';
 
 function equalValues(controlName1: string, controlName2: string) {
   return (control: AbstractControl) => {
@@ -28,8 +29,11 @@ function equalValues(controlName1: string, controlName2: string) {
   styleUrl: './register.component.css',
 })
 export class RegisterComponent implements OnInit {
-  private destroyRef = inject(DestroyRef);
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private notificationService: NotificationService,
+    private router: Router
+  ) {}
 
   form = new FormGroup({
     email: new FormControl('', {
@@ -50,6 +54,21 @@ export class RegisterComponent implements OnInit {
     ),
     displayName: new FormControl('', { validators: [Validators.required] }),
   });
+  private destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+    const subscription = this.form.valueChanges
+      .pipe(debounceTime(500))
+      .subscribe({
+        next: (value) => {
+          localStorage.setItem(
+            'saved-register-form',
+            JSON.stringify({ email: value.email })
+          );
+        },
+      });
+    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  }
 
   onSubmit() {
     const isLogin = this.authService.register(
@@ -59,6 +78,11 @@ export class RegisterComponent implements OnInit {
     );
 
     if (isLogin) this.router.navigate(['/dashboard']);
+    else this.notificationService.error('Register failed');
+  }
+
+  onReset() {
+    this.form.reset();
   }
 
   get emailIsInvalid() {
@@ -75,23 +99,5 @@ export class RegisterComponent implements OnInit {
       this.form.controls.passwords.controls.password.dirty &&
       this.form.controls.passwords.controls.password.invalid
     );
-  }
-
-  ngOnInit(): void {
-    const subscription = this.form.valueChanges
-      .pipe(debounceTime(500))
-      .subscribe({
-        next: (value) => {
-          localStorage.setItem(
-            'saved-register-form',
-            JSON.stringify({ email: value.email })
-          );
-        },
-      });
-    this.destroyRef.onDestroy(() => subscription.unsubscribe());
-  }
-
-  onReset() {
-    this.form.reset();
   }
 }

@@ -20,7 +20,13 @@ export class TasksService {
 
   getUserTasks(userId: string) {
     return this.tasks$.pipe(
-      map((tasks) => tasks.filter((task) => task.uid === userId))
+      map((tasks) =>
+        tasks.filter(
+          (task) =>
+            task.uid === userId ||
+            (task.sharedWith && task.sharedWith.includes(userId))
+        )
+      )
     );
   }
 
@@ -35,11 +41,11 @@ export class TasksService {
       if (this.isBrowser()) {
         console.log('Saving tasks to localStorage');
         this.saveTasks();
-        this.notificationService.success('Tâche créée avec succès !');
+        this.notificationService.success('Task created successfully !');
       }
     } else {
       console.log('Task already exists, skipping');
-      this.notificationService.warning('Cette tâche existe déjà');
+      this.notificationService.warning('Task already exists');
     }
   }
 
@@ -55,6 +61,7 @@ export class TasksService {
             status: updatedTask.status,
             dueDate: updatedTask.dueDate,
             tags: updatedTask.tags,
+            sharedWith: updatedTask.sharedWith,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -65,7 +72,7 @@ export class TasksService {
     if (this.isBrowser()) {
       console.log('Saving updated tasks to localStorage');
       this.saveTasks();
-      this.notificationService.success('Tâche modifiée avec succès !');
+      this.notificationService.success('Task updated successfully !');
     }
   }
 
@@ -78,7 +85,7 @@ export class TasksService {
     if (this.isBrowser()) {
       console.log('Saving tasks after deletion to localStorage');
       this.saveTasks();
-      this.notificationService.success('Tâche supprimée avec succès !');
+      this.notificationService.success('Task deleted successfully !');
     }
   }
 

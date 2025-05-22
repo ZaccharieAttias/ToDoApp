@@ -1,7 +1,5 @@
 <div class="comments-list">
-  <div *ngIf="comments.length === 0" class="no-comments">
-    Aucun commentaire pour le moment.
-  </div>
+  <div *ngIf="comments.length === 0" class="no-comments">No comments yet.</div>
 
   <div *ngFor="let comment of comments" class="comment-item">
     <div class="comment-header">
@@ -19,21 +17,23 @@
           editingCommentId !== comment.id
         "
       >
-        <button
-          *ngIf="isCommentOwner(comment)"
-          class="btn btn-edit"
-          (click)="startEditing(comment)"
-          [disabled]="isSubmitting"
-        >
-          Modifier
-        </button>
-        <button
-          class="btn btn-delete"
-          (click)="deleteComment(comment)"
-          [disabled]="isSubmitting"
-        >
-          Supprimer
-        </button>
+        <div *ngIf="isCommentOwner(comment)">
+          <button
+            *ngIf="isCommentOwner(comment)"
+            class="btn btn-edit"
+            (click)="startEditing(comment)"
+            [disabled]="isSubmitting"
+          >
+            Edit
+          </button>
+          <button
+            class="btn btn-delete"
+            (click)="deleteComment(comment)"
+            [disabled]="isSubmitting"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
         [(ngModel)]="editedContent"
         class="edit-textarea"
         [disabled]="isSubmitting"
-        placeholder="Modifier votre commentaire..."
+        placeholder="Edit your comment..."
       >
       </textarea>
       <div class="edit-actions">
@@ -51,14 +51,14 @@
           (click)="saveEdit(comment)"
           [disabled]="isSubmitting || !editedContent.trim()"
         >
-          {{ isSubmitting ? "Enregistrement..." : "Enregistrer" }}
+          {{ isSubmitting ? "Saving..." : "Save" }}
         </button>
         <button
           class="btn btn-cancel"
           (click)="cancelEditing()"
           [disabled]="isSubmitting"
         >
-          Annuler
+          Cancel
         </button>
       </div>
     </div>
@@ -72,7 +72,7 @@
         "
         class="comment-edited"
       >
-        (modifié le {{ comment.updatedAt | date : "dd/MM/yyyy HH:mm" }})
+        (edited on {{ comment.updatedAt | date : "dd/MM/yyyy HH:mm" }})
       </span>
     </div>
   </div>

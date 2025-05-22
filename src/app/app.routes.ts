@@ -43,12 +43,6 @@ export const routes: Routes = [
     ],
     title: 'Authentification',
   },
-  // {
-  //   path: 'tasks',
-  //   loadComponent: () =>
-  //     import('./features/tasks/tasks.component').then((m) => m.TasksComponent),
-  //   canActivate: [AuthGuard],
-  // },
   {
     path: ':userName',
     component: UserComponent,
@@ -59,12 +53,6 @@ export const routes: Routes = [
     },
     title: 'Profil utilisateur',
   },
-  // {
-  //   path: 'dashboard',
-  //   component: DashboardComponent,
-  //   canActivate: [AuthGuard],
-  //   title: 'Tableau de bord',
-  // },
   {
     path: '**',
     component: NotFoundComponent,

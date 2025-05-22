@@ -20,7 +20,6 @@ export class UserNameResolver implements Resolve<string> {
     }
 
     if (requestedUserName !== currentUser.displayName) {
-      // Rediriger vers le profil de l'utilisateur connecté
       this.router.navigate([`/${currentUser.displayName}`]);
       return of('');
     }
