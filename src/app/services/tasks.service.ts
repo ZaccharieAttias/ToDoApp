@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Task } from '../models/task.model';
 import { BehaviorSubject, map } from 'rxjs';
-import { AuthService } from './auth.service';
-
+import { NotificationService } from './notification.service';
 @Injectable({
   providedIn: 'root',
 })
@@ -10,7 +9,7 @@ export class TasksService {
   private tasksSubject = new BehaviorSubject<Task[]>([]);
   tasks$ = this.tasksSubject.asObservable();
 
-  constructor() {
+  constructor(private notificationService: NotificationService) {
     if (this.isBrowser()) {
       const tasks = localStorage.getItem('tasks');
       if (tasks) {
@@ -36,9 +35,11 @@ export class TasksService {
       if (this.isBrowser()) {
         console.log('Saving tasks to localStorage');
         this.saveTasks();
+        this.notificationService.success('Tâche créée avec succès !');
       }
     } else {
       console.log('Task already exists, skipping');
+      this.notificationService.warning('Cette tâche existe déjà');
     }
   }
 
@@ -64,6 +65,7 @@ export class TasksService {
     if (this.isBrowser()) {
       console.log('Saving updated tasks to localStorage');
       this.saveTasks();
+      this.notificationService.success('Tâche modifiée avec succès !');
     }
   }
 
@@ -76,6 +78,7 @@ export class TasksService {
     if (this.isBrowser()) {
       console.log('Saving tasks after deletion to localStorage');
       this.saveTasks();
+      this.notificationService.success('Tâche supprimée avec succès !');
     }
   }
 

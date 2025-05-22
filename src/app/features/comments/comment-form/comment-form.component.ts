@@ -17,6 +17,7 @@ import { CommentService } from '../../../services/comment.service';
 import { AuthService } from '../../../services/auth.service';
 import { MentionDirective } from '../../../shared/directives/mention.directive';
 import { CommonModule } from '@angular/common';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
   selector: 'app-comment-form',
@@ -39,7 +40,8 @@ export class CommentFormComponent {
 
   constructor(
     private commentService: CommentService,
-    private authService: AuthService
+    private authService: AuthService,
+    private notificationService: NotificationService
   ) {}
 
   onSubmit() {
@@ -59,6 +61,7 @@ export class CommentFormComponent {
         this.commentService.addCommentToTask(this.taskId, comment);
         this.commentForm.reset();
         this.onCommentAdded.emit(comment);
+        this.notificationService.success('Commentaire ajouté avec succès !');
       }
     }
   }

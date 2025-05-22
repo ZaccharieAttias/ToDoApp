@@ -19,6 +19,7 @@ import { CanDeactivateFn, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, BehaviorSubject, debounceTime } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+import { NotificationService } from '../../../services/notification.service';
 
 export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
   component
@@ -55,7 +56,8 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     private taskService: TasksService,
     private router: Router,
     private route: ActivatedRoute,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private notificationService: NotificationService
   ) {
     this.form = this.fb.group({
       title: ['', [Validators.required]],

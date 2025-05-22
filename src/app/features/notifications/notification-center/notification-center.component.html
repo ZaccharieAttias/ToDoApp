@@ -1,1 +1,21 @@
-<p>notification-center works!</p>
+<div class="notification-container" *ngIf="notification">
+  <div class="notification" [ngClass]="notification.type">
+    <div class="notification-icon">
+      <i
+        class="fas"
+        [ngClass]="{
+          'fa-check-circle': notification.type === 'success',
+          'fa-exclamation-circle': notification.type === 'error',
+          'fa-info-circle': notification.type === 'info',
+          'fa-exclamation-triangle': notification.type === 'warning'
+        }"
+      ></i>
+    </div>
+    <div class="notification-content">
+      <p class="notification-message">{{ notification.message }}</p>
+    </div>
+    <button class="notification-close" (click)="onCloseNotification()">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>

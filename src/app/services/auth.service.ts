@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { User } from '../models/user.model';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root',
@@ -8,6 +9,7 @@ import { User } from '../models/user.model';
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private users: User[] = [];
+  private notificationService = inject(NotificationService);
 
   get currentUser$(): Observable<User | null> {
     return this.currentUserSubject.asObservable();
@@ -37,6 +39,7 @@ export class AuthService {
       }
     }
     console.log('Login failed for:', email);
+    this.notificationService.error('Email ou mot de passe incorrect');
     return false;
   }
   private isBrowser(): boolean {
@@ -48,6 +51,7 @@ export class AuthService {
     const userExists = this.users.some((user) => user.email === email);
     if (userExists) {
       console.log('Registration failed - user already exists:', email);
+      this.notificationService.error('Cet email est déjà utilisé');
       return false;
     }
     const newUser: User = {
@@ -71,6 +75,7 @@ export class AuthService {
     if (this.isBrowser()) {
       localStorage.removeItem('currentUser');
     }
+    this.notificationService.info('Vous avez été déconnecté');
   }
   autoLogin() {
     console.log('Attempting auto login');

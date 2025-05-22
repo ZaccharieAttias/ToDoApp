@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Comment } from '../models/comment.model';
-
+import { NotificationService } from './notification.service';
 @Injectable({
   providedIn: 'root',
 })
@@ -11,7 +11,7 @@ export class CommentService {
   );
   private readonly STORAGE_KEY = 'task_comments';
 
-  constructor() {
+  constructor(private notificationService: NotificationService) {
     this.loadCommentsFromStorage();
   }
 
@@ -77,6 +77,7 @@ export class CommentService {
 
     this.commentsSubject.next(updatedMap);
     this.saveCommentsToStorage(updatedMap);
+    this.notificationService.success('Commentaire créé avec succès !');
   }
 
   updateComment(
@@ -95,6 +96,7 @@ export class CommentService {
 
     this.commentsSubject.next(updatedMap);
     this.saveCommentsToStorage(updatedMap);
+    this.notificationService.success('Commentaire modifié avec succès !');
   }
 
   deleteComment(taskId: string, commentId: string): void {
@@ -109,6 +111,7 @@ export class CommentService {
 
     this.commentsSubject.next(updatedMap);
     this.saveCommentsToStorage(updatedMap);
+    this.notificationService.success('Commentaire supprimé avec succès !');
   }
 
   deleteAllCommentsForTask(taskId: string): void {
@@ -117,5 +120,8 @@ export class CommentService {
     updatedMap.delete(taskId);
     this.commentsSubject.next(updatedMap);
     this.saveCommentsToStorage(updatedMap);
+    this.notificationService.success(
+      'Tous les commentaires ont été supprimés !'
+    );
   }
 }
