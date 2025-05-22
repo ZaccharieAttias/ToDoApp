@@ -15,10 +15,25 @@ import {
 } from '@angular/forms';
 import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
-import { CanDeactivateFn, Router } from '@angular/router';
+import { CanDeactivateFn, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil, BehaviorSubject, debounceTime } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+
+export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
+  component
+) => {
+  if (component.submitted) {
+    return true;
+  }
+
+  if (component.form.dirty) {
+    return window.confirm(
+      'Voulez-vous vraiment quitter ? Vous perdrez les données saisies.'
+    );
+  }
+  return true;
+};
 
 @Component({
   selector: 'app-task-form',
@@ -28,14 +43,6 @@ import { AuthService } from '../../../services/auth.service';
   styleUrl: './task-form.component.css',
 })
 export class TaskFormComponent implements OnInit, OnDestroy {
-  @Input() set taskToEdit(task: Task | null) {
-    if (task) {
-      this.taskToEdit$.next(task);
-    }
-  }
-  @Output() formSubmit = new EventEmitter<Task>();
-  @Output() cancel = new EventEmitter<void>();
-
   private taskToEdit$ = new BehaviorSubject<Task | null>(null);
   isEditing$ = new BehaviorSubject<boolean>(false);
   form: FormGroup;
@@ -47,6 +54,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private taskService: TasksService,
     private router: Router,
+    private route: ActivatedRoute,
     private fb: FormBuilder
   ) {
     this.form = this.fb.group({
@@ -59,30 +67,28 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.taskToEdit$.pipe(takeUntil(this.destroy$)).subscribe((task) => {
-      if (task) {
-        console.log('Task to edit received:', task);
-        const dueDate = new Date(task.dueDate);
-        const formattedDate = dueDate.toISOString().split('T')[0];
+    // Vérifier si nous sommes en mode édition
+    this.route.params.subscribe((params) => {
+      if (params['id']) {
+        const taskId = params['id'];
+        this.taskService.getTaskById(taskId).subscribe((task) => {
+          if (task) {
+            const dueDate = new Date(task.dueDate);
+            const formattedDate = dueDate.toISOString().split('T')[0];
 
-        this.form.patchValue({
-          title: task.title,
-          description: task.description,
-          dueDate: formattedDate,
-          status: task.status,
-          tags: task.tags || [],
+            this.form.patchValue({
+              title: task.title,
+              description: task.description,
+              dueDate: formattedDate,
+              status: task.status,
+              tags: task.tags || [],
+            });
+            this.isEditing$.next(true);
+            this.taskToEdit$.next(task);
+          }
         });
-        this.isEditing$.next(true);
-      } else {
-        this.isEditing$.next(false);
       }
     });
-
-    this.form.valueChanges
-      .pipe(debounceTime(1000), takeUntil(this.destroy$))
-      .subscribe(() => {
-        console.log('Form values changed:', this.form.value);
-      });
   }
 
   ngOnDestroy() {
@@ -112,19 +118,38 @@ export class TaskFormComponent implements OnInit, OnDestroy {
         updatedAt: new Date().toISOString(),
       };
 
-      this.formSubmit.emit(taskData);
+      if (this.taskToEdit$.value) {
+        this.taskService.updateTask(taskData);
+      } else {
+        this.taskService.addTask(taskData);
+      }
+
       this.submitted = true;
       this.form.reset();
       this.currentTag.reset();
+      const isEditing = this.isEditing$.value;
       this.isEditing$.next(false);
+
+      // Navigation vers la liste des tâches
+      if (isEditing) {
+        this.router.navigate(['../../'], { relativeTo: this.route });
+      } else {
+        this.router.navigate(['../'], { relativeTo: this.route });
+      }
     }
   }
 
   onCancel() {
-    this.cancel.emit();
     this.form.reset();
     this.currentTag.reset();
+    const isEditing = this.isEditing$.value;
     this.isEditing$.next(false);
+    // Navigation vers la liste des tâches
+    if (isEditing) {
+      this.router.navigate(['../../'], { relativeTo: this.route });
+    } else {
+      this.router.navigate(['../'], { relativeTo: this.route });
+    }
   }
 
   addTag() {
@@ -147,18 +172,3 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     });
   }
 }
-
-export const canLeaveEditPage: CanDeactivateFn<TaskFormComponent> = (
-  component
-) => {
-  if (component.submitted) {
-    return true;
-  }
-
-  if (component.form.dirty) {
-    return window.confirm(
-      'Do you really want to leave? You will lose the entered data.'
-    );
-  }
-  return true;
-};

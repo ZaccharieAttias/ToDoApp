@@ -6,8 +6,9 @@ import { TaskFormComponent } from './task-form/task-form.component';
 import { TaskListComponent } from './task-list/task-list.component';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { CommentService } from '../../services/comment.service';
+
 @Component({
   selector: 'app-tasks',
   standalone: true,
@@ -19,12 +20,36 @@ export class TasksComponent implements OnInit, OnDestroy {
   private tasksService = inject(TasksService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private commentService = inject(CommentService);
+
   tasks: Task[] = [];
   taskToEdit: Task | null = null;
+  showForm = false;
   private destroy$ = new Subject<void>();
 
   ngOnInit() {
+    // Gérer les paramètres de route
+    this.route.data.subscribe((data) => {
+      if (data['mode'] === 'new') {
+        this.showForm = true;
+        this.taskToEdit = null;
+      }
+    });
+
+    this.route.params.subscribe((params) => {
+      if (params['id']) {
+        const taskId = params['id'];
+        this.tasksService.getTaskById(taskId).subscribe((task) => {
+          if (task) {
+            this.taskToEdit = task;
+            this.showForm = true;
+          }
+        });
+      }
+    });
+
+    // Charger les tâches
     const userId = this.authService.getCurrentUser()?.id;
     if (userId) {
       this.tasksService
@@ -42,19 +67,24 @@ export class TasksComponent implements OnInit, OnDestroy {
   }
 
   onTaskSaved(task: Task) {
-    console.log('Task received in parent:', task);
     if (this.taskToEdit) {
-      console.log('Updating existing task');
       this.tasksService.updateTask(task);
     } else {
-      console.log('Adding new task');
       this.tasksService.addTask(task);
     }
+    // Navigation vers la liste des tâches
+    if (this.taskToEdit) {
+      console.log('a ete creee');
+      this.router.navigate(['../../'], { relativeTo: this.route });
+    } else {
+      this.router.navigate(['../'], { relativeTo: this.route });
+    }
     this.taskToEdit = null;
+    this.showForm = false;
   }
 
   onEditTask(task: Task) {
-    this.taskToEdit = task;
+    this.router.navigate(['edit', task.id], { relativeTo: this.route });
   }
 
   onDeleteTask(taskId: string) {
@@ -62,6 +92,16 @@ export class TasksComponent implements OnInit, OnDestroy {
   }
 
   onCancelEdit() {
+    if (this.taskToEdit) {
+      this.router.navigate(['../../'], { relativeTo: this.route });
+    } else {
+      this.router.navigate(['../'], { relativeTo: this.route });
+    }
     this.taskToEdit = null;
+    this.showForm = false;
+  }
+
+  onNewTask() {
+    this.router.navigate(['new'], { relativeTo: this.route });
   }
 }

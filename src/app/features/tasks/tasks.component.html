@@ -1,19 +1,29 @@
 <div class="tasks-container">
-  <h2>Mes tâches</h2>
+  <div class="tasks-header">
+    <h2>Mes tâches</h2>
+    <button *ngIf="!showForm" (click)="onNewTask()" class="btn btn-primary">
+      <i class="fas fa-plus"></i>
+      Nouvelle tâche
+    </button>
+  </div>
+
   <app-task-form
+    *ngIf="showForm"
     [taskToEdit]="taskToEdit"
     (formSubmit)="onTaskSaved($event)"
     (cancel)="onCancelEdit()"
   >
   </app-task-form>
 
-  <div *ngIf="tasks.length === 0" class="no-tasks">
-    <p>Aucune tâche pour le moment. Créez-en une nouvelle !</p>
+  <div *ngIf="!showForm">
+    <div *ngIf="tasks.length === 0" class="no-tasks">
+      <p>Aucune tâche pour le moment. Créez-en une nouvelle !</p>
+    </div>
+    <app-task-list
+      [tasks]="tasks"
+      (editRequested)="onEditTask($event)"
+      (deleteRequested)="onDeleteTask($event.id)"
+    >
+    </app-task-list>
   </div>
-  <app-task-list
-    [tasks]="tasks"
-    (editRequested)="onEditTask($event)"
-    (deleteRequested)="onDeleteTask($event.id)"
-  >
-  </app-task-list>
 </div>

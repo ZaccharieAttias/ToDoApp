@@ -1,10 +1,18 @@
 import { Routes } from '@angular/router';
-import { DashboardComponent } from './features/tasks/dashboard/dashboard.component';
 import { AuthGuard } from './guards/auth.guard';
 import { NoAuthGuard } from './guards/no-auth.guard';
+import { NotFoundComponent } from './features/not-found/not-found.component';
+import { UserNameResolver } from './resolvers/user-name.resolver';
+import { UserComponent } from './features/dashboard/user/user.component';
+import { routes as userRoutes } from './features/dashboard/user.route';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'auth', pathMatch: 'full' },
+  {
+    path: '',
+    redirectTo: 'auth',
+    pathMatch: 'full',
+    title: 'Accueil',
+  },
   {
     path: 'auth',
     loadComponent: () =>
@@ -22,6 +30,7 @@ export const routes: Routes = [
           import('./features/auth/login/login.component').then(
             (m) => m.LoginComponent
           ),
+        title: 'Connexion',
       },
       {
         path: 'register',
@@ -29,19 +38,36 @@ export const routes: Routes = [
           import('./features/auth/register/register.component').then(
             (m) => m.RegisterComponent
           ),
+        title: 'Inscription',
       },
     ],
+    title: 'Authentification',
   },
+  // {
+  //   path: 'tasks',
+  //   loadComponent: () =>
+  //     import('./features/tasks/tasks.component').then((m) => m.TasksComponent),
+  //   canActivate: [AuthGuard],
+  // },
   {
-    path: 'tasks',
-    loadComponent: () =>
-      import('./features/tasks/tasks.component').then((m) => m.TasksComponent),
+    path: ':userName',
+    component: UserComponent,
+    children: userRoutes,
     canActivate: [AuthGuard],
+    resolve: {
+      userName: UserNameResolver,
+    },
+    title: 'Profil utilisateur',
   },
+  // {
+  //   path: 'dashboard',
+  //   component: DashboardComponent,
+  //   canActivate: [AuthGuard],
+  //   title: 'Tableau de bord',
+  // },
   {
-    path: 'dashboard',
-    component: DashboardComponent,
-    canActivate: [AuthGuard],
+    path: '**',
+    component: NotFoundComponent,
+    title: 'Page non trouvée',
   },
-  { path: '**', redirectTo: 'auth' },
 ];

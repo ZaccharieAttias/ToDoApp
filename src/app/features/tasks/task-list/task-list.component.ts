@@ -55,7 +55,6 @@ export class TaskListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Souscription aux changements de recherche
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => {
@@ -63,7 +62,6 @@ export class TaskListComponent implements OnInit {
         this.resetExpandedTasks();
       });
 
-    // Souscription aux changements de filtre de statut
     this.statusFilter.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
@@ -71,13 +69,11 @@ export class TaskListComponent implements OnInit {
         this.resetExpandedTasks();
       });
 
-    // Souscription aux changements de tâches
     this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
       this.filterTasks();
       this.resetExpandedTasks();
     });
 
-    // Chargement initial des commentaires
     this.loadCommentsCount();
   }
 

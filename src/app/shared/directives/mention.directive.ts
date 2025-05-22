@@ -39,7 +39,6 @@ export class MentionDirective implements OnDestroy {
     const cursorPosition = textarea.selectionStart;
     const text = textarea.value;
 
-    // Trouver le début de la mention actuelle
     let mentionStart = cursorPosition;
     while (
       mentionStart > 0 &&
@@ -49,7 +48,6 @@ export class MentionDirective implements OnDestroy {
       mentionStart--;
     }
 
-    // Vérifier si nous sommes dans une mention
     if (mentionStart > 0 && text[mentionStart - 1] === '@') {
       this.currentMention = text.slice(mentionStart, cursorPosition);
       this.showSuggestions(textarea, cursorPosition);
@@ -93,7 +91,6 @@ export class MentionDirective implements OnDestroy {
 
   @HostListener('blur')
   onBlur() {
-    // Ne pas supprimer les suggestions immédiatement pour permettre la sélection au clic
     setTimeout(() => {
       if (!this.isNavigating) {
         this.removeSuggestions();
@@ -105,10 +102,8 @@ export class MentionDirective implements OnDestroy {
     textarea: HTMLTextAreaElement,
     cursorPosition: number
   ) {
-    // Obtenir la position du curseur
     const rect = this.getCaretCoordinates(textarea, cursorPosition);
 
-    // Filtrer les utilisateurs
     const users = this.authService
       .getUsers()
       .filter((user) =>
@@ -117,7 +112,6 @@ export class MentionDirective implements OnDestroy {
           .includes(this.currentMention.toLowerCase())
       );
 
-    // Créer ou mettre à jour le composant de suggestions
     if (!this.suggestionsComponent) {
       this.suggestionsComponent = this.viewContainerRef.createComponent(
         MentionSuggestionsComponent
@@ -127,7 +121,6 @@ export class MentionDirective implements OnDestroy {
       });
     }
 
-    // Mettre à jour les suggestions
     this.suggestionsComponent.instance.suggestions = users;
     this.suggestionsComponent.instance.top = rect.top + 40;
     this.suggestionsComponent.instance.left = rect.left + 15;
@@ -145,7 +138,6 @@ export class MentionDirective implements OnDestroy {
     const text = textarea.value;
     const cursorPosition = textarea.selectionStart;
 
-    // Trouver le début de la mention actuelle (inclure le @)
     let mentionStart = cursorPosition;
     while (
       mentionStart > 0 &&
@@ -155,30 +147,24 @@ export class MentionDirective implements OnDestroy {
       mentionStart--;
     }
     if (mentionStart > 0 && text[mentionStart - 1] === '@') {
-      mentionStart--; // reculer pour inclure le @
+      mentionStart--;
     }
 
-    // Remplacer la mention par le nom complet de l'utilisateur
     const newText =
       text.slice(0, mentionStart) +
       `@${user.displayName} ` +
       text.slice(cursorPosition);
 
-    // Mettre à jour la valeur du textarea
     textarea.value = newText;
 
-    // Déclencher un événement input pour mettre à jour le formulaire
     const inputEvent = new Event('input', { bubbles: true });
     textarea.dispatchEvent(inputEvent);
 
-    // Mettre à jour la position du curseur
     const newCursorPosition = mentionStart + user.displayName.length + 2;
     textarea.setSelectionRange(newCursorPosition, newCursorPosition);
 
-    // Émettre l'événement
     this.mentionDetected.emit(user.displayName);
 
-    // Supprimer les suggestions
     this.removeSuggestions();
   }
 
