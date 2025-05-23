@@ -7,6 +7,6 @@ export interface Task {
   status: boolean;
   tags?: string[];
   sharedWith?: string[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

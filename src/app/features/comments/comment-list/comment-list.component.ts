@@ -16,7 +16,16 @@ import { MentionPipe } from '../../../shared/pipes/mention.pipe';
   styleUrl: './comment-list.component.css',
 })
 export class CommentListComponent implements OnInit {
-  @Input() taskId: string = '';
+  @Input() set taskId(value: string) {
+    this._taskId = value;
+    if (value) {
+      this.loadComments();
+    }
+  }
+  get taskId(): string {
+    return this._taskId;
+  }
+  private _taskId: string = '';
   comments: Comment[] = [];
   editingCommentId: string | null = null;
   editedContent: string = '';
@@ -24,6 +33,7 @@ export class CommentListComponent implements OnInit {
   taskOwnerId: string | null = null;
   isSubmitting: boolean = false;
   userDisplayNames: string[] = [];
+  allUserDisplayNames: string[] = [];
   private destroyRef = inject(DestroyRef);
 
   constructor(
@@ -31,30 +41,47 @@ export class CommentListComponent implements OnInit {
     private authService: AuthService,
     private tasksService: TasksService
   ) {
-    this.currentUserId = this.authService.getCurrentUser()?.id || null;
+    this.currentUserId = this.authService.getCurrentUser()?.uid || null;
   }
 
   ngOnInit(): void {
-    this.userDisplayNames = this.authService
+    this.authService
       .getUsers()
-      .map((u) => u.displayName);
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((users) => {
+        this.userDisplayNames = users.map((user) => user.displayName);
+        this.allUserDisplayNames = [
+          ...this.userDisplayNames,
+          this.authService.getCurrentUser()?.displayName || '',
+        ];
+      });
 
-    this.tasksService.getTaskById(this.taskId).subscribe((task) => {
-      this.taskOwnerId = task?.uid || null;
-    });
+    this.tasksService
+      .getTaskById(this.taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((task) => {
+        this.taskOwnerId = task?.uid || null;
+      });
+
+    if (this.taskId) {
+      this.loadComments();
+    }
+  }
+
+  private loadComments(): void {
+    if (!this.taskId) return;
 
     this.commentService
       .getCommentsFromTask(this.taskId)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((comments: Comment[]) => {
-        this.comments = this.sortCommentsByDate(comments);
-      });
-
-    this.commentService
-      .getCommentsUpdates(this.taskId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((updatedComments: Comment[]) => {
-        this.comments = this.sortCommentsByDate(updatedComments);
+      .subscribe({
+        next: (comments: Comment[]) => {
+          this.comments = this.sortCommentsByDate(comments);
+          console.log('Comments loaded:', this.comments);
+        },
+        error: (error) => {
+          console.error('Error loading comments:', error);
+        },
       });
   }
 
@@ -93,11 +120,7 @@ export class CommentListComponent implements OnInit {
           content: this.editedContent,
           updatedAt: new Date(),
         };
-        this.commentService.updateComment(
-          this.taskId,
-          comment.id,
-          updatedComment
-        );
+        this.commentService.updateComment(comment.id, updatedComment.content);
         this.editingCommentId = null;
         this.editedContent = '';
       } finally {
@@ -113,7 +136,7 @@ export class CommentListComponent implements OnInit {
     ) {
       try {
         this.isSubmitting = true;
-        this.commentService.deleteComment(this.taskId, comment.id);
+        this.commentService.deleteComment(comment.id);
       } finally {
         this.isSubmitting = false;
       }

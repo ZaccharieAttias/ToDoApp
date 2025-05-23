@@ -71,14 +71,25 @@ export class RegisterComponent implements OnInit {
   }
 
   onSubmit() {
-    const isLogin = this.authService.register(
-      this.form.controls.displayName.value ?? '',
-      this.form.controls.email.value ?? '',
-      this.form.controls.passwords.controls.password.value ?? ''
-    );
+    // const isLogin = this.authService.register(
+    //   this.form.controls.displayName.value ?? '',
+    //   this.form.controls.email.value ?? '',
+    //   this.form.controls.passwords.controls.password.value ?? ''
+    // );
 
-    if (isLogin) this.router.navigate(['/dashboard']);
-    else this.notificationService.error('Register failed');
+    // if (isLogin) this.router.navigate(['/dashboard']);
+    // else this.notificationService.error('Register failed');
+
+    this.authService
+      .register(
+        this.form.controls.email.value ?? '',
+        this.form.controls.passwords.controls.password.value ?? '',
+        this.form.controls.displayName.value ?? ''
+      )
+      .then((isRegister) => {
+        if (isRegister) this.router.navigate(['/dashboard']);
+        else this.notificationService.error('Register failed');
+      });
   }
 
   onReset() {

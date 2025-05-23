@@ -64,12 +64,11 @@
     </div>
 
     <div *ngIf="editingCommentId !== comment.id" class="comment-content">
-      <span [innerHTML]="comment.content | mention : userDisplayNames"></span>
       <span
-        *ngIf="
-          comment.updatedAt &&
-          comment.updatedAt.getTime() !== comment.createdAt.getTime()
-        "
+        [innerHTML]="comment.content | mention : allUserDisplayNames"
+      ></span>
+      <span
+        *ngIf="comment.updatedAt && comment.updatedAt !== comment.createdAt"
         class="comment-edited"
       >
         (edited on {{ comment.updatedAt | date : "dd/MM/yyyy HH:mm" }})

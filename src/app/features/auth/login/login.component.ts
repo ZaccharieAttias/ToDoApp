@@ -52,16 +52,29 @@ export class LoginComponent implements OnInit {
 
   onSubmit() {
     if (this.form.valid) {
-      const isLogin = this.authService.login(
-        this.form.controls.email.value ?? '',
-        this.form.controls.password.value ?? ''
-      );
+      // const isLogin = this.authService.login(
+      //   this.form.controls.email.value ?? '',
+      //   this.form.controls.password.value ?? ''
+      // );
 
-      if (isLogin) {
-        this.router.navigate(['/dashboard']);
-      } else {
-        this.notificationService.error('Login failed');
-      }
+      // if (isLogin) {
+      //   this.router.navigate(['/dashboard']);
+      // } else {
+      //   this.notificationService.error('Login failed');
+      // }
+
+      this.authService
+        .login(
+          this.form.controls.email.value ?? '',
+          this.form.controls.password.value ?? ''
+        )
+        .then((isLogin) => {
+          if (isLogin) {
+            this.router.navigate(['/dashboard']);
+          } else {
+            this.notificationService.error('Login failed');
+          }
+        });
     }
   }
 

@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { Resolve, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
-import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
@@ -24,6 +23,6 @@ export class UserNameResolver implements Resolve<string> {
       return of('');
     }
 
-    return of(currentUser.displayName);
+    return of(currentUser.displayName || '');
   }
 }

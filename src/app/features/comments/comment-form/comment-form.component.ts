@@ -1,11 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  EventEmitter,
-  inject,
-  Input,
-  Output,
-} from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -36,7 +29,6 @@ export class CommentFormComponent {
       Validators.maxLength(100),
     ]),
   });
-  private destroyRef = inject(DestroyRef);
 
   constructor(
     private commentService: CommentService,
@@ -44,24 +36,20 @@ export class CommentFormComponent {
     private notificationService: NotificationService
   ) {}
 
-  onSubmit() {
+  async onSubmit() {
     if (this.commentForm.valid) {
       const currentUser = this.authService.getCurrentUser();
       if (currentUser) {
-        const userId = currentUser.id;
-        const comment: Comment = {
-          id: userId + '-' + this.taskId + '-' + new Date().getTime(),
-          taskId: this.taskId,
-          userId: userId,
-          userName: currentUser.displayName,
-          content: this.commentForm.value.content || '',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        this.commentService.addCommentToTask(this.taskId, comment);
-        this.commentForm.reset();
-        this.onCommentAdded.emit(comment);
-        this.notificationService.success('Commentaire ajouté avec succès !');
+        try {
+          await this.commentService.addCommentToTask(
+            this.taskId,
+            this.commentForm.value.content || ''
+          );
+          this.commentForm.reset();
+          this.notificationService.success('Comment added successfully!');
+        } catch (error) {
+          this.notificationService.error('Error adding comment');
+        }
       }
     }
   }

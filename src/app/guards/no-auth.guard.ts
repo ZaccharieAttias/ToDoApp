@@ -6,7 +6,7 @@ import {
   UrlTree,
 } from '@angular/router';
 import { Injectable } from '@angular/core';
-import { Observable, map, take } from 'rxjs';
+import { Observable } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
@@ -23,15 +23,10 @@ export class NoAuthGuard implements CanActivate {
     | UrlTree
     | Promise<boolean | UrlTree>
     | Observable<boolean | UrlTree> {
-    return this.authService.currentUser$.pipe(
-      take(1),
-      map((user) => {
-        const isAuth = !!user;
-        if (!isAuth) {
-          return true;
-        }
-        return this.router.createUrlTree([`/${user.displayName}`]);
-      })
-    );
+    if (this.authService.isLoggedIn()) {
+      const userDisplayName = this.authService.getCurrentUser()?.displayName;
+      return this.router.createUrlTree([`/${userDisplayName}`]);
+    }
+    return true;
   }
 }

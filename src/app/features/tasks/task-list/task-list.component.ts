@@ -64,8 +64,10 @@ export class TaskListComponent implements OnInit {
     private commentService: CommentService,
     private authService: AuthService
   ) {
-    this.currentUserId = this.authService.getCurrentUser()?.id;
-    this.users = this.authService.getUsers();
+    this.currentUserId = this.authService.getCurrentUser()?.uid;
+    this.authService.getUsers().subscribe((users) => {
+      this.users = users;
+    });
   }
 
   ngOnInit() {
@@ -83,9 +85,9 @@ export class TaskListComponent implements OnInit {
       });
 
     this.loadCommentsCount();
-    this.userDisplayNames = this.authService
-      .getUsers()
-      .map((u) => u.displayName);
+    this.authService.getUsers().subscribe((users) => {
+      this.userDisplayNames = users.map((u) => u.displayName);
+    });
   }
 
   private resetExpandedTasks(): void {
@@ -109,17 +111,28 @@ export class TaskListComponent implements OnInit {
   }
 
   private loadCommentsCount(): void {
-    this.commentService
-      .getCommentsUpdates('')
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((comments) => {
-        const countMap = new Map<string, number>();
-        comments.forEach((comment) => {
-          const currentCount = countMap.get(comment.taskId) || 0;
-          countMap.set(comment.taskId, currentCount + 1);
-        });
-        this.taskCommentsCount = countMap;
+    this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
+      tasks.forEach((task) => {
+        this.commentService
+          .getCommentsFromTask(task.id)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe((comments) => {
+            this.taskCommentsCount.set(task.id, comments.length);
+          });
       });
+    });
+    // function to load the comments count for each task
+    // this.commentService
+    // .getCommentsFromTask('')
+    // .pipe(takeUntil(this.destroy$))
+    // .subscribe((comments) => {
+    //   const countMap = new Map<string, number>();
+    //   comments.forEach((comment) => {
+    //     const currentCount = countMap.get(comment.taskId) || 0;
+    //     countMap.set(comment.taskId, currentCount + 1);
+    //   });
+    //   this.taskCommentsCount = countMap;
+    // });
   }
 
   trackByTaskId(index: number, task: Task): string {
@@ -135,6 +148,13 @@ export class TaskListComponent implements OnInit {
       this.expandedTasks.delete(taskId);
     } else {
       this.expandedTasks.add(taskId);
+      // Charger les commentaires lors de l'expansion
+      this.commentService
+        .getCommentsFromTask(taskId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe((comments) => {
+          this.taskCommentsCount.set(taskId, comments.length);
+        });
     }
   }
 

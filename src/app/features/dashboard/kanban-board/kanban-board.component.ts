@@ -177,9 +177,9 @@ export class KanbanBoardComponent implements OnInit {
 
   ngOnInit() {
     this.connectedDropLists = this.columns.map((col) => col.id);
-    const userId = this.authService.getCurrentUser()?.id;
+    const userId = this.authService.getCurrentUser()?.uid;
     if (userId) {
-      this.tasksService.getUserTasks(userId).subscribe((tasks) => {
+      this.tasksService.getTasks().subscribe((tasks) => {
         this.organizeTasks(tasks);
       });
     }
@@ -222,7 +222,7 @@ export class KanbanBoardComponent implements OnInit {
       const task = event.container.data[event.currentIndex];
       const newStatus = this.getNewTaskStatus(event.container.id);
 
-      this.tasksService.updateTask({
+      this.tasksService.updateTask(task.id, {
         ...task,
         ...newStatus,
       });

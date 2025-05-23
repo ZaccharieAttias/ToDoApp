@@ -1,11 +1,11 @@
 export const environment = {
   production: true,
   firebase: {
-    apiKey: process.env['FIREBASE_API_KEY'],
-    authDomain: process.env['FIREBASE_AUTH_DOMAIN'],
-    projectId: process.env['FIREBASE_PROJECT_ID'],
-    storageBucket: process.env['FIREBASE_STORAGE_BUCKET'],
-    messagingSenderId: process.env['FIREBASE_MESSAGING_SENDER_ID'],
-    appId: process.env['FIREBASE_APP_ID'],
+    projectId: 'todoapp-5f4e2',
+    appId: '1:111891884473:web:495f8f554f53bab04aee68',
+    storageBucket: 'todoapp-5f4e2.firebasestorage.app',
+    apiKey: 'AIzaSyCqtQN1zv-Cn_UbWlVx-xNZsZm-qF5_MrA',
+    authDomain: 'todoapp-5f4e2.firebaseapp.com',
+    messagingSenderId: '111891884473',
   },
 };

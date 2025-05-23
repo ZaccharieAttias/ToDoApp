@@ -104,13 +104,16 @@ export class MentionDirective implements OnDestroy {
   ) {
     const rect = this.getCaretCoordinates(textarea, cursorPosition);
 
-    const users = this.authService
-      .getUsers()
-      .filter((user) =>
+    this.authService.getUsers().subscribe((users) => {
+      const filteredUsers = users.filter((user) =>
         user.displayName
           .toLowerCase()
           .includes(this.currentMention.toLowerCase())
       );
+      if (this.suggestionsComponent) {
+        this.suggestionsComponent.instance.suggestions = filteredUsers;
+      }
+    });
 
     if (!this.suggestionsComponent) {
       this.suggestionsComponent = this.viewContainerRef.createComponent(
@@ -121,7 +124,6 @@ export class MentionDirective implements OnDestroy {
       });
     }
 
-    this.suggestionsComponent.instance.suggestions = users;
     this.suggestionsComponent.instance.top = rect.top + 40;
     this.suggestionsComponent.instance.left = rect.left + 15;
   }

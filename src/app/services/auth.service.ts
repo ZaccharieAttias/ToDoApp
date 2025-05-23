@@ -1,122 +1,161 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { User } from '../models/user.model';
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, map, Observable, timer } from 'rxjs';
 import { NotificationService } from './notification.service';
+import {
+  Auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  User,
+  onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence,
+} from '@angular/fire/auth';
+import { Firestore, doc, getDocs, setDoc } from '@angular/fire/firestore';
+import { collection, collectionData } from '@angular/fire/firestore';
+import { User as UserProfile } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
-  private users: User[] = [];
-  private notificationService = inject(NotificationService);
-
   currentUser$ = this.currentUserSubject.asObservable();
+  private autoLogoutTimer: any;
+  private readonly AUTO_LOGOUT_TIME = 30 * 60 * 1000; // 30 minutes
+
+  constructor(
+    private auth: Auth,
+    private firestore: Firestore,
+    private notificationService: NotificationService
+  ) {
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
+    try {
+      // Set persistence to local storage
+      await setPersistence(this.auth, browserLocalPersistence);
+      console.log('Auth persistence initialized');
+
+      // Listen for auth state changes
+      onAuthStateChanged(this.auth, (user) => {
+        if (user) {
+          console.log('User is signed in:', user.email);
+          this.currentUserSubject.next(user);
+          this.startAutoLogoutTimer();
+        } else {
+          console.log('User is signed out');
+          this.currentUserSubject.next(null);
+          this.clearAutoLogoutTimer();
+        }
+      });
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+    }
+  }
+
+  private startAutoLogoutTimer() {
+    this.clearAutoLogoutTimer();
+    this.autoLogoutTimer = timer(this.AUTO_LOGOUT_TIME).subscribe(() => {
+      this.logout();
+      this.notificationService.info('Session expired due to inactivity');
+    });
+  }
+
+  private clearAutoLogoutTimer() {
+    if (this.autoLogoutTimer) {
+      this.autoLogoutTimer.unsubscribe();
+    }
+  }
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
 
-  getUsers(): User[] {
-    return this.users;
-  }
-
-  login(email: string, password: string) {
-    console.log('Attempting login for:', email);
-    if (this.users.length > 0) {
-      const foundUser = this.users.find(
-        (user) => user.email === email && user.password === password
+  async login(email: string, password: string): Promise<boolean> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        this.auth,
+        email,
+        password
       );
-      if (foundUser) {
-        console.log('Login successful for:', email);
-        this.currentUserSubject.next(foundUser);
-        if (this.isBrowser()) {
-          localStorage.setItem('currentUser', JSON.stringify(foundUser));
-        }
-        return true;
-      }
-    }
-    console.log('Login failed for:', email);
-    this.notificationService.error('Email ou mot de passe incorrect');
-    return false;
-  }
-  private isBrowser(): boolean {
-    return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
-  }
-
-  register(displayName: string, email: string, password: string) {
-    console.log('Attempting registration for:', email);
-    const userExists = this.users.some((user) => user.email === email);
-    if (userExists) {
-      console.log('Registration failed - user already exists:', email);
-      this.notificationService.error('Cet email est déjà utilisé');
+      console.log('Login successful for:', email);
+      this.currentUserSubject.next(userCredential.user);
+      this.startAutoLogoutTimer();
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      this.notificationService.error('Email or password incorrect');
       return false;
     }
-    const newUser: User = {
-      id: Math.random().toString(),
-      email: email,
-      password: password,
-      displayName: displayName,
-    };
-    this.users = [...this.users, newUser];
-    if (this.isBrowser()) {
-      localStorage.setItem('users', JSON.stringify(this.users));
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-    }
-    console.log('Registration successful for:', email);
-    this.currentUserSubject.next(newUser);
-    return true;
   }
-  logout() {
-    console.log('Logging out user:', this.currentUserSubject.value?.email);
-    this.currentUserSubject.next(null);
-    if (this.isBrowser()) {
-      localStorage.removeItem('currentUser');
-    }
-    this.notificationService.info('Vous avez été déconnecté');
-  }
-  autoLogin() {
-    console.log('Attempting auto login');
-    if (this.isBrowser()) {
-      const users = localStorage.getItem('users');
-      if (users) {
-        try {
-          this.users = JSON.parse(users);
-          console.log('Loaded users from localStorage:', this.users.length);
-        } catch (error) {
-          console.error('Error parsing users from localStorage:', error);
-          this.users = [];
-        }
-      }
 
-      const currentUser = localStorage.getItem('currentUser');
-      if (currentUser) {
-        try {
-          const parsedUser = JSON.parse(currentUser);
+  async register(
+    email: string,
+    password: string,
+    displayName: string
+  ): Promise<boolean> {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        this.auth,
+        email,
+        password
+      );
+      console.log('Registration successful for:', email);
+      this.currentUserSubject.next(userCredential.user);
+      await this.updateProfile(displayName);
 
-          const userExists = this.users.some(
-            (user) => user.email === parsedUser.email
-          );
-          if (userExists) {
-            console.log('Auto login successful for:', parsedUser.email);
-            this.currentUserSubject.next(parsedUser);
-          } else {
-            console.log('Auto login failed - user not found in users');
-            this.logout();
-          }
-        } catch (error) {
-          console.error('Error parsing currentUser from localStorage:', error);
-          this.logout();
-        }
-      } else {
-        console.log('No current user found in localStorage');
-      }
+      const uid = userCredential.user.uid;
+      await setDoc(doc(this.firestore, 'users', uid), {
+        id: uid,
+        email: email,
+        displayName: displayName,
+      });
+      this.startAutoLogoutTimer();
+      return true;
+    } catch (error) {
+      console.error('Registration failed:', error);
+      this.notificationService.error('Registration failed');
+      return false;
     }
   }
-  autoLogout() {}
-  isLoggedIn() {
-    const isLoggedIn = this.currentUserSubject.value !== null;
-    console.log('isLoggedIn check:', isLoggedIn);
-    return isLoggedIn;
+
+  async updateProfile(displayName: string): Promise<void> {
+    const user = this.currentUserSubject.value;
+    if (user) {
+      await updateProfile(user, { displayName: displayName });
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await signOut(this.auth);
+      console.log('User logged out successfully');
+      this.currentUserSubject.next(null);
+      this.clearAutoLogoutTimer();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      this.notificationService.error('Logout failed');
+    }
+  }
+
+  isLoggedIn(): boolean {
+    return this.currentUserSubject.value !== null;
+  }
+
+  autoLogout() {
+    this.logout();
+    this.notificationService.info('Session expired due to inactivity');
+  }
+
+  getUsers(): Observable<UserProfile[]> {
+    const usersRef = collection(this.firestore, 'users');
+    return collectionData(usersRef, { idField: 'uid' }).pipe(
+      map((users) =>
+        users.filter((user) => user.uid !== this.currentUserSubject.value?.uid)
+      )
+    ) as Observable<UserProfile[]>;
   }
 }

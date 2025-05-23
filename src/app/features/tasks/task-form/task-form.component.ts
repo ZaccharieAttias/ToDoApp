@@ -10,10 +10,11 @@ import { Task } from '../../../models/task.model';
 import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subject, BehaviorSubject } from 'rxjs';
+import { Subject, BehaviorSubject, combineLatest, takeUntil } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
-import { User } from '../../../models/user.model';
+import { User as UserProfile } from '../../../models/user.model';
+
 import { MentionDirective } from '../../../shared/directives/mention.directive';
 
 @Component({
@@ -30,8 +31,8 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   submitted = false;
   currentTag = new FormControl('');
   private destroy$ = new Subject<void>();
-  availableUsers: User[] = [];
-  selectedUsers: User[] = [];
+  availableUsers: UserProfile[] = [];
+  selectedUsers: UserProfile[] = [];
 
   constructor(
     private authService: AuthService,
@@ -52,41 +53,77 @@ export class TaskFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // Charger la liste des utilisateurs disponibles
-    this.availableUsers = this.authService
-      .getUsers()
-      .filter((user) => user.id !== this.authService.getCurrentUser()?.id);
+    // this.authService.getUsers().subscribe((users) => {
+    //   this.availableUsers = users;
 
-    this.route.params.subscribe((params) => {
-      if (params['id']) {
-        const taskId = params['id'];
-        this.taskService.getTaskById(taskId).subscribe((task) => {
-          if (task) {
-            const dueDate = new Date(task.dueDate);
-            const formattedDate = dueDate.toISOString().split('T')[0];
+    //   this.route.params.subscribe((params) => {
+    //     if (params['id']) {
+    //       const taskId = params['id'];
+    //       this.taskService.getTaskById(taskId).subscribe((task) => {
+    //         if (task) {
+    //           const dueDate = new Date(task.dueDate);
+    //           const formattedDate = dueDate.toISOString().split('T')[0];
 
-            this.form.patchValue({
-              title: task.title,
-              description: task.description,
-              dueDate: formattedDate,
-              status: task.status,
-              tags: task.tags || [],
-              sharedWith: task.sharedWith || [],
-            });
+    //           if (task.sharedWith) {
+    //             this.selectedUsers = this.availableUsers.filter((user) =>
+    //               task.sharedWith?.includes(user.id)
+    //             );
+    //           } else {
+    //             this.selectedUsers = [];
+    //           }
 
-            // Mettre à jour la liste des utilisateurs sélectionnés
-            if (task.sharedWith) {
-              this.selectedUsers = this.availableUsers.filter((user) =>
-                task.sharedWith?.includes(user.id)
-              );
+    //           this.form.patchValue({
+    //             title: task.title,
+    //             description: task.description,
+    //             dueDate: formattedDate,
+    //             status: task.status,
+    //             tags: task.tags || [],
+    //             sharedWith: task.sharedWith || [],
+    //           });
+
+    //           this.isEditing$.next(true);
+    //           this.taskToEdit$.next(task);
+    //         }
+    //       });
+    //     }
+    //   });
+    // });
+
+    combineLatest([this.route.params, this.authService.getUsers()])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([params, users]) => {
+        this.availableUsers = users;
+
+        if (params['id']) {
+          const taskId = params['id'];
+          this.taskService.getTaskById(taskId).subscribe((task) => {
+            if (task) {
+              const dueDate = new Date(task.dueDate);
+              const formattedDate = dueDate.toISOString().split('T')[0];
+
+              if (task.sharedWith) {
+                this.selectedUsers = this.availableUsers.filter((user) =>
+                  task.sharedWith?.includes(user.id)
+                );
+              } else {
+                this.selectedUsers = [];
+              }
+
+              this.form.patchValue({
+                title: task.title,
+                description: task.description,
+                dueDate: formattedDate,
+                status: task.status,
+                tags: task.tags || [],
+                sharedWith: task.sharedWith || [],
+              });
+
+              this.isEditing$.next(true);
+              this.taskToEdit$.next(task);
             }
-
-            this.isEditing$.next(true);
-            this.taskToEdit$.next(task);
-          }
-        });
-      }
-    });
+          });
+        }
+      });
   }
 
   ngOnDestroy() {
@@ -96,7 +133,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
 
   onSubmit() {
     if (this.form.valid) {
-      const userId = this.authService.getCurrentUser()?.id;
+      const userId = this.authService.getCurrentUser()?.uid;
       if (!userId) {
         console.error('No user ID available');
         this.notificationService.error('The user was disconnected');
@@ -110,17 +147,16 @@ export class TaskFormComponent implements OnInit, OnDestroy {
         uid: userId,
         title: formValue.title,
         description: formValue.description,
-        dueDate: new Date(formValue.dueDate),
+        dueDate: formValue.dueDate,
         status: formValue.status,
         tags: formValue.tags || [],
         sharedWith: formValue.sharedWith || [],
-        createdAt:
-          this.taskToEdit$.value?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: this.taskToEdit$.value?.createdAt || new Date(),
+        updatedAt: new Date(),
       };
 
       if (this.taskToEdit$.value) {
-        this.taskService.updateTask(taskData);
+        this.taskService.updateTask(this.taskToEdit$.value.id, taskData);
       } else {
         this.taskService.addTask(taskData);
       }
@@ -172,7 +208,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleUserSelection(user: User) {
+  toggleUserSelection(user: UserProfile) {
     const currentSharedWith = this.form.get('sharedWith')?.value || [];
     const userIndex = currentSharedWith.indexOf(user.id);
 
@@ -187,17 +223,9 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       });
       this.selectedUsers = this.selectedUsers.filter((u) => u.id !== user.id);
     }
-
-    if (this.isEditing$.value && this.taskToEdit$.value) {
-      const updatedTask: Task = {
-        ...this.taskToEdit$.value,
-        sharedWith: this.form.get('sharedWith')?.value || [],
-        updatedAt: new Date().toISOString(),
-      };
-    }
   }
 
-  isUserSelected(user: User): boolean {
+  isUserSelected(user: UserProfile): boolean {
     return this.selectedUsers.some((u) => u.id === user.id);
   }
 }

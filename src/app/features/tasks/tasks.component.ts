@@ -27,10 +27,10 @@ export class TasksComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    const userId = this.authService.getCurrentUser()?.id;
+    const userId = this.authService.getCurrentUser()?.uid;
     if (userId) {
       const subscription = this.tasksService
-        .getUserTasks(userId)
+        .getTasks()
         .subscribe((tasks: Task[]) => {
           this.tasks = tasks;
         });
