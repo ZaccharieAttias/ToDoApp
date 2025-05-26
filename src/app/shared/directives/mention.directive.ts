@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { MentionSuggestionsComponent } from '../mention-suggestions/mention-suggestions.component';
 import { AuthService } from '../../services/auth.service';
+import { take } from 'rxjs/operators';
 
 @Directive({
   selector: '[appMentionDirective]',
@@ -104,16 +105,19 @@ export class MentionDirective implements OnDestroy {
   ) {
     const rect = this.getCaretCoordinates(textarea, cursorPosition);
 
-    this.authService.getUsers().subscribe((users) => {
-      const filteredUsers = users.filter((user) =>
-        user.displayName
-          .toLowerCase()
-          .includes(this.currentMention.toLowerCase())
-      );
-      if (this.suggestionsComponent) {
-        this.suggestionsComponent.instance.suggestions = filteredUsers;
-      }
-    });
+    this.authService
+      .getUsers()
+      .pipe(take(1))
+      .subscribe((users) => {
+        const filteredUsers = users.filter((user) =>
+          user.displayName
+            .toLowerCase()
+            .includes(this.currentMention.toLowerCase())
+        );
+        if (this.suggestionsComponent) {
+          this.suggestionsComponent.instance.suggestions = filteredUsers;
+        }
+      });
 
     if (!this.suggestionsComponent) {
       this.suggestionsComponent = this.viewContainerRef.createComponent(

@@ -12,6 +12,7 @@ import {
   updateDoc,
   doc,
   deleteDoc,
+  getDocs,
 } from '@angular/fire/firestore';
 import {
   map,
@@ -20,12 +21,15 @@ import {
   of,
   from,
   switchMap,
-  defer,
   combineLatest,
+  withLatestFrom,
+  take,
+  filter,
 } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
 import { Task } from '../../../models/task.model';
+import { User } from 'firebase/auth';
 
 @Injectable()
 export class TasksEffects {
@@ -40,44 +44,49 @@ export class TasksEffects {
     this.actions$.pipe(
       ofType(TasksActions.loadTasks),
       switchMap(() => {
-        const user = this.authService.getCurrentUser();
-        if (!user) {
-          return of(
-            TasksActions.loadTasksFailure({ error: 'User not authenticated' })
-          );
-        }
-
-        return defer(() => {
-          const tasksRef = collection(this.firestore, 'tasks');
-
-          const ownTasksQuery = query(
-            tasksRef,
-            where('userId', '==', user.uid)
-          );
-          const sharedTasksQuery = query(
-            tasksRef,
-            where('sharedWith', 'array-contains', user.uid)
-          );
-
-          const ownTasks$ = collectionData(ownTasksQuery, { idField: 'id' });
-          const sharedTasks$ = collectionData(sharedTasksQuery, {
-            idField: 'id',
-          });
-
-          return combineLatest([ownTasks$, sharedTasks$]).pipe(
-            map(([ownTasks, sharedTasks]) => {
-              const allTasks = [...ownTasks, ...sharedTasks] as Task[];
-              const uniqueTasks = allTasks.filter(
-                (task, index, self) =>
-                  index === self.findIndex((t) => t.id === task.id)
+        return this.authService.currentUser$.pipe(
+          filter((user): user is User => !!user),
+          take(1),
+          switchMap((user) => {
+            if (!user) {
+              return of(
+                TasksActions.loadTasksFailure({
+                  error: 'User not authenticated',
+                })
               );
-              return TasksActions.loadTasksSuccess({ tasks: uniqueTasks });
-            }),
-            catchError((err) =>
-              of(TasksActions.loadTasksFailure({ error: err.message }))
-            )
-          );
-        });
+            }
+
+            const tasksRef = collection(this.firestore, 'tasks');
+            const ownTasksQuery = query(
+              tasksRef,
+              where('userId', '==', user.uid)
+            );
+            const sharedTasksQuery = query(
+              tasksRef,
+              where('sharedWith', 'array-contains', user.uid)
+            );
+
+            const ownTasks$ = collectionData(ownTasksQuery, { idField: 'id' });
+            const sharedTasks$ = collectionData(sharedTasksQuery, {
+              idField: 'id',
+            });
+
+            return combineLatest([ownTasks$, sharedTasks$]).pipe(
+              map(([ownTasks, sharedTasks]) => {
+                const allTasks = [...ownTasks, ...sharedTasks] as Task[];
+                const uniqueMap = new Map<string, Task>();
+                for (const task of allTasks) {
+                  uniqueMap.set(task.id, task);
+                }
+                const uniqueTasks = Array.from(uniqueMap.values());
+                return TasksActions.loadTasksSuccess({ tasks: uniqueTasks });
+              }),
+              catchError((err) =>
+                of(TasksActions.loadTasksFailure({ error: err.message }))
+              )
+            );
+          })
+        );
       })
     )
   );
@@ -85,26 +94,26 @@ export class TasksEffects {
   addTask$ = createEffect(() =>
     this.actions$.pipe(
       ofType(TasksActions.addTask),
-      mergeMap(({ task }) => {
-        const user = this.authService.getCurrentUser();
+      withLatestFrom(this.authService.currentUser$),
+      mergeMap(([{ task }, user]) => {
         if (!user) {
           return of(
             TasksActions.addTaskFailure({ error: 'User not authenticated' })
           );
         }
 
-        return defer(() => {
+        try {
           const tasksRef = collection(this.firestore, 'tasks');
-          const queryRef = query(
+          const duplicateQuery = query(
             tasksRef,
             where('userId', '==', user.uid),
             where('title', '==', task.title)
           );
 
-          return collectionData(queryRef, { idField: 'id' }).pipe(
-            mergeMap((existing) => {
-              if (existing.length > 0) {
-                this.notificationService.warning('Task already exists');
+          return from(getDocs(duplicateQuery)).pipe(
+            mergeMap((snapshot) => {
+              if (!snapshot.empty) {
+                this.notificationService.error('Task already exists');
                 return of(
                   TasksActions.addTaskFailure({ error: 'Task already exists' })
                 );
@@ -128,14 +137,22 @@ export class TasksEffects {
                       createdAt: newTask.createdAt.toDate(),
                     } as Task,
                   });
-                }),
-                catchError((err) =>
-                  of(TasksActions.addTaskFailure({ error: err.message }))
-                )
+                })
               );
+            }),
+            catchError((err) => {
+              this.notificationService.error('Failed to create task.');
+              return of(TasksActions.addTaskFailure({ error: err.message }));
             })
           );
-        });
+        } catch (error) {
+          this.notificationService.error('Failed to create task.');
+          return of(
+            TasksActions.addTaskFailure({
+              error: 'Firestore context lost after logout',
+            })
+          );
+        }
       })
     )
   );
@@ -145,20 +162,17 @@ export class TasksEffects {
       ofType(TasksActions.updateTask),
       mergeMap(({ taskId, updates }) => {
         const taskRef = doc(this.firestore, 'tasks', taskId);
-
         return from(
-          updateDoc(taskRef, {
-            ...updates,
-            updatedAt: Timestamp.now(),
-          })
+          updateDoc(taskRef, { ...updates, updatedAt: Timestamp.now() })
         ).pipe(
           map(() => {
             this.notificationService.success('Task updated successfully!');
             return TasksActions.updateTaskSuccess({ taskId, updates });
           }),
-          catchError((err) =>
-            of(TasksActions.updateTaskFailure({ error: err.message }))
-          )
+          catchError((err) => {
+            this.notificationService.error('Failed to update task.');
+            return of(TasksActions.updateTaskFailure({ error: err.message }));
+          })
         );
       })
     )
@@ -169,15 +183,15 @@ export class TasksEffects {
       ofType(TasksActions.deleteTask),
       mergeMap(({ taskId }) => {
         const taskRef = doc(this.firestore, 'tasks', taskId);
-
         return from(deleteDoc(taskRef)).pipe(
           map(() => {
             this.notificationService.success('Task deleted successfully!');
             return TasksActions.deleteTaskSuccess({ taskId });
           }),
-          catchError((err) =>
-            of(TasksActions.deleteTaskFailure({ error: err.message }))
-          )
+          catchError((err) => {
+            this.notificationService.error('Failed to delete task.');
+            return of(TasksActions.deleteTaskFailure({ error: err.message }));
+          })
         );
       })
     )

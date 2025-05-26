@@ -1,6 +1,6 @@
 export interface Task {
   id: string;
-  uid: string;
+  userId: string;
   title: string;
   description: string;
   dueDate: Date;

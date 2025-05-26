@@ -6,8 +6,9 @@ import {
   UrlTree,
 } from '@angular/router';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { switchMap, take } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
@@ -15,16 +16,16 @@ import { AuthService } from '../services/auth.service';
 export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService, private router: Router) {}
 
-  canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot
-  ):
-    | boolean
-    | UrlTree
-    | Promise<boolean | UrlTree>
-    | Observable<boolean | UrlTree> {
-    return (
-      this.authService.isLoggedIn() || this.router.createUrlTree(['/auth'])
+  canActivate(): Observable<boolean | UrlTree> {
+    return this.authService.authReady$.pipe(
+      take(1),
+      switchMap(() => {
+        if (this.authService.isLoggedIn()) {
+          return of(true);
+        } else {
+          return of(this.router.createUrlTree(['/auth/login']));
+        }
+      })
     );
   }
 }

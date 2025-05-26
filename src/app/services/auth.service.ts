@@ -1,5 +1,15 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, map, Observable, timer } from 'rxjs';
+import {
+  BehaviorSubject,
+  map,
+  Observable,
+  timer,
+  ReplaySubject,
+  switchMap,
+  of,
+  take,
+  EMPTY,
+} from 'rxjs';
 import { NotificationService } from './notification.service';
 import {
   Auth,
@@ -9,9 +19,8 @@ import {
   updateProfile,
   User,
   onAuthStateChanged,
-  browserLocalPersistence,
-  setPersistence,
 } from '@angular/fire/auth';
+import { browserLocalPersistence, setPersistence } from 'firebase/auth';
 import { Firestore, doc, getDocs, setDoc } from '@angular/fire/firestore';
 import { collection, collectionData } from '@angular/fire/firestore';
 import { User as UserProfile } from '../models/user.model';
@@ -24,35 +33,51 @@ export class AuthService {
   currentUser$ = this.currentUserSubject.asObservable();
   private autoLogoutTimer: any;
   private readonly AUTO_LOGOUT_TIME = 30 * 60 * 1000; // 30 minutes
+  private authInitialized = false;
+  private authReadySubject = new ReplaySubject<boolean>(1);
+  authReady$ = this.authReadySubject.asObservable();
 
   constructor(
     private auth: Auth,
     private firestore: Firestore,
     private notificationService: NotificationService
-  ) {}
+  ) {
+    this.initializeAuth();
+  }
 
-  // private async initializeAuth() {
-  //   try {
-  //     // Set persistence to local storage
-  //     await setPersistence(this.auth, browserLocalPersistence);
-  //     console.log('Auth persistence initialized');
+  private async initializeAuth() {
+    try {
+      // Set persistence to local storage
+      await setPersistence(this.auth, browserLocalPersistence);
+      console.log('Auth persistence initialized');
 
-  //     // Listen for auth state changes
-  //     onAuthStateChanged(this.auth, (user) => {
-  //       if (user) {
-  //         console.log('User is signed in:', user.email);
-  //         this.currentUserSubject.next(user);
-  //         this.startAutoLogoutTimer();
-  //       } else {
-  //         console.log('User is signed out');
-  //         this.currentUserSubject.next(null);
-  //         this.clearAutoLogoutTimer();
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.error('Error initializing auth:', error);
-  //   }
-  // }
+      // Get the current user immediately
+      const currentUser = this.auth.currentUser;
+      if (currentUser) {
+        this.currentUserSubject.next(currentUser);
+        this.startAutoLogoutTimer();
+      }
+
+      // Listen for auth state changes
+      onAuthStateChanged(this.auth, (user) => {
+        if (user) {
+          console.log('User is signed in:', user.email);
+          this.currentUserSubject.next(user);
+          this.startAutoLogoutTimer();
+        } else {
+          console.log('User is signed out');
+          this.currentUserSubject.next(null);
+          this.clearAutoLogoutTimer();
+        }
+        this.authInitialized = true;
+        this.authReadySubject.next(true);
+      });
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      this.authInitialized = true;
+      this.authReadySubject.next(true);
+    }
+  }
 
   private startAutoLogoutTimer() {
     this.clearAutoLogoutTimer();
@@ -140,6 +165,10 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
+    if (!this.authInitialized) {
+      // Si l'authentification n'est pas encore initialisée, on vérifie directement avec Firebase
+      return this.auth.currentUser !== null;
+    }
     return this.currentUserSubject.value !== null;
   }
 
@@ -149,11 +178,19 @@ export class AuthService {
   }
 
   getUsers(): Observable<UserProfile[]> {
-    const usersRef = collection(this.firestore, 'users');
-    return collectionData(usersRef, { idField: 'uid' }).pipe(
-      map((users) =>
-        users.filter((user) => user.uid !== this.currentUserSubject.value?.uid)
-      )
-    ) as Observable<UserProfile[]>;
+    return this.currentUser$.pipe(
+      take(1),
+      switchMap((user) => {
+        if (!user) return EMPTY;
+        const usersRef = collection(this.firestore, 'users');
+        return collectionData(usersRef, { idField: 'uid' }).pipe(
+          map((users) =>
+            users.filter(
+              (user) => user.uid !== this.currentUserSubject.value?.uid
+            )
+          )
+        ) as Observable<UserProfile[]>;
+      })
+    );
   }
 }

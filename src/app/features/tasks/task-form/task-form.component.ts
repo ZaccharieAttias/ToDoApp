@@ -149,7 +149,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       const formValue = this.form.value;
       const taskData: Task = {
         id: this.taskToEdit$.value?.id || Date.now().toString(),
-        uid: userId,
+        userId: userId,
         title: formValue.title,
         description: formValue.description,
         dueDate: formValue.dueDate,
@@ -161,6 +161,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       };
 
       if (this.taskToEdit$.value) {
+        console.log('Updating task:', taskData);
         this.store.dispatch(
           updateTask({
             taskId: this.taskToEdit$.value.id,
@@ -168,6 +169,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
           })
         );
       } else {
+        console.log('Adding task:', taskData);
         this.store.dispatch(addTask({ task: taskData }));
       }
 

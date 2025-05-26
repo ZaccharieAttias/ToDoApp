@@ -62,7 +62,7 @@ export class CommentListComponent implements OnInit {
       .select(selectTaskById(this.taskId))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((task) => {
-        this.taskOwnerId = task?.uid || null;
+        this.taskOwnerId = task?.userId || null;
       });
 
     if (this.taskId) {

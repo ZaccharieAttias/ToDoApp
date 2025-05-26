@@ -74,32 +74,16 @@ export class TaskListComponent implements OnInit {
     this.currentUserId = this.authService.getCurrentUser()?.uid;
     this.tasksLoading$ = this.store.select(selectTasksLoading);
     this.filteredTasks$ = this.store.select(selectAllTasks);
-    this.authService.getUsers().subscribe((users) => {
-      this.users = users;
-    });
   }
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.store.dispatch(loadTasks());
-
-    // this.store.select(selectAllTasks).pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
-    //   this.filteredTasks$ = of(tasks);
-    //   this.filterTasks();
-    //   this.resetExpandedTasks();
-    // })
-
-    // combineLatest([
-    //   this.searchControl.valueChanges.pipe(
-    //     debounceTime(500),
-    //     distinctUntilChanged(),
-    //     startWith('')
-    //   ),
-    //   this.statusFilter.valueChanges.pipe(startWith('all')),
-    // ])
-    //   .pipe(takeUntil(this.destroy$))
-    //   .subscribe(() => {
-    //     this.filterTasks();
-    //   });
+    this.authService
+      .getUsers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((users) => {
+        this.users = users;
+      });
 
     const search$ = this.searchControl.valueChanges.pipe(
       debounceTime(500),
@@ -132,9 +116,12 @@ export class TaskListComponent implements OnInit {
     );
 
     this.loadCommentsCount();
-    this.authService.getUsers().subscribe((users) => {
-      this.userDisplayNames = users.map((u) => u.displayName);
-    });
+    this.authService
+      .getUsers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((users) => {
+        this.userDisplayNames = users.map((u) => u.displayName);
+      });
   }
 
   private resetExpandedTasks(): void {
@@ -152,31 +139,6 @@ export class TaskListComponent implements OnInit {
           });
       });
     });
-    // V1
-    // function to load the comments count for each task
-    // this.commentService
-    // .getCommentsFromTask('')
-    // .pipe(takeUntil(this.destroy$))
-    // .subscribe((comments) => {
-    //   const countMap = new Map<string, number>();
-    //   comments.forEach((comment) => {
-    //     const currentCount = countMap.get(comment.taskId) || 0;
-    //     countMap.set(comment.taskId, currentCount + 1);
-    //   });
-    //   this.taskCommentsCount = countMap;
-    // });
-
-    // V2
-    // this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
-    //   tasks.forEach((task) => {
-    //     this.commentService
-    //       .getCommentsFromTask(task.id)
-    //       .pipe(takeUntil(this.destroy$))
-    //       .subscribe((comments) => {
-    //         this.taskCommentsCount.set(task.id, comments.length);
-    //       });
-    //   });
-    // });
   }
 
   trackByTaskId(index: number, task: Task): string {
@@ -192,7 +154,6 @@ export class TaskListComponent implements OnInit {
       this.expandedTasks.delete(taskId);
     } else {
       this.expandedTasks.add(taskId);
-      // Charger les commentaires lors de l'expansion
       this.commentService
         .getCommentsFromTask(taskId)
         .pipe(takeUntil(this.destroy$))
@@ -224,7 +185,7 @@ export class TaskListComponent implements OnInit {
   }
 
   isTaskOwner(task: Task): boolean {
-    return task.uid === this.currentUserId;
+    return task.userId === this.currentUserId;
   }
 
   getSharedUsers(task: Task): User[] {
@@ -238,7 +199,7 @@ export class TaskListComponent implements OnInit {
     if (this.isTaskOwner(task)) {
       return `Shared with: ${sharedUsers.map((u) => u.displayName).join(', ')}`;
     } else {
-      const owner = this.users.find((u) => u.id === task.uid);
+      const owner = this.users.find((u) => u.id === task.userId);
       return `Shared by: ${owner?.displayName || 'Unknown'}`;
     }
   }
