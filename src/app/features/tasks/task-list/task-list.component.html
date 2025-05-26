@@ -17,7 +17,7 @@
     </div>
   </div>
 
-  <ng-container *ngIf="currentTasks | async as tasks">
+  <ng-container *ngIf="filteredTasks$ | async as tasks">
     <ng-container
       *ngIf="(tasks | filterByStatus : currentStatus)?.length; else noTasks"
     >

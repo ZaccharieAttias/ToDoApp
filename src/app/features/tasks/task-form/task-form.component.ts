@@ -7,14 +7,19 @@ import {
   FormBuilder,
 } from '@angular/forms';
 import { Task } from '../../../models/task.model';
-import { TasksService } from '../../../services/tasks.service';
 import { CanDeactivateFn, Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Subject, BehaviorSubject, combineLatest, takeUntil } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
 import { User as UserProfile } from '../../../models/user.model';
-
+import { Store } from '@ngrx/store';
+import { AppState } from '../../../state/tasks/state/app.state';
+import { selectTaskById } from '../../../state/tasks/selectors/tasks.selectors';
+import {
+  addTask,
+  updateTask,
+} from '../../../state/tasks/actions/tasks.actions';
 import { MentionDirective } from '../../../shared/directives/mention.directive';
 
 @Component({
@@ -36,11 +41,11 @@ export class TaskFormComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
-    private taskService: TasksService,
     private router: Router,
     private route: ActivatedRoute,
     private fb: FormBuilder,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private store: Store<AppState>
   ) {
     this.form = this.fb.group({
       title: ['', [Validators.required]],
@@ -96,7 +101,7 @@ export class TaskFormComponent implements OnInit, OnDestroy {
 
         if (params['id']) {
           const taskId = params['id'];
-          this.taskService.getTaskById(taskId).subscribe((task) => {
+          this.store.select(selectTaskById(taskId)).subscribe((task) => {
             if (task) {
               const dueDate = new Date(task.dueDate);
               const formattedDate = dueDate.toISOString().split('T')[0];
@@ -156,9 +161,14 @@ export class TaskFormComponent implements OnInit, OnDestroy {
       };
 
       if (this.taskToEdit$.value) {
-        this.taskService.updateTask(this.taskToEdit$.value.id, taskData);
+        this.store.dispatch(
+          updateTask({
+            taskId: this.taskToEdit$.value.id,
+            updates: taskData,
+          })
+        );
       } else {
-        this.taskService.addTask(taskData);
+        this.store.dispatch(addTask({ task: taskData }));
       }
 
       this.submitted = true;

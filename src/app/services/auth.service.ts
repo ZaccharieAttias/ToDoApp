@@ -29,32 +29,30 @@ export class AuthService {
     private auth: Auth,
     private firestore: Firestore,
     private notificationService: NotificationService
-  ) {
-    this.initializeAuth();
-  }
+  ) {}
 
-  private async initializeAuth() {
-    try {
-      // Set persistence to local storage
-      await setPersistence(this.auth, browserLocalPersistence);
-      console.log('Auth persistence initialized');
+  // private async initializeAuth() {
+  //   try {
+  //     // Set persistence to local storage
+  //     await setPersistence(this.auth, browserLocalPersistence);
+  //     console.log('Auth persistence initialized');
 
-      // Listen for auth state changes
-      onAuthStateChanged(this.auth, (user) => {
-        if (user) {
-          console.log('User is signed in:', user.email);
-          this.currentUserSubject.next(user);
-          this.startAutoLogoutTimer();
-        } else {
-          console.log('User is signed out');
-          this.currentUserSubject.next(null);
-          this.clearAutoLogoutTimer();
-        }
-      });
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-    }
-  }
+  //     // Listen for auth state changes
+  //     onAuthStateChanged(this.auth, (user) => {
+  //       if (user) {
+  //         console.log('User is signed in:', user.email);
+  //         this.currentUserSubject.next(user);
+  //         this.startAutoLogoutTimer();
+  //       } else {
+  //         console.log('User is signed out');
+  //         this.currentUserSubject.next(null);
+  //         this.clearAutoLogoutTimer();
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.error('Error initializing auth:', error);
+  //   }
+  // }
 
   private startAutoLogoutTimer() {
     this.clearAutoLogoutTimer();

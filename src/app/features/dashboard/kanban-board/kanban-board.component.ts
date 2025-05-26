@@ -1,7 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Task } from '../../../models/task.model';
-import { TasksService } from '../../../services/tasks.service';
 import { AuthService } from '../../../services/auth.service';
 import {
   CdkDragDrop,
@@ -10,6 +9,13 @@ import {
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
 import { NotificationService } from '../../../services/notification.service';
+import { AppState } from '../../../state/tasks/state/app.state';
+import { Store } from '@ngrx/store';
+import { selectAllTasks } from '../../../state/tasks/selectors/tasks.selectors';
+import {
+  updateTask,
+  loadTasks,
+} from '../../../state/tasks/actions/tasks.actions';
 
 interface KanbanColumn {
   id: string;
@@ -164,7 +170,6 @@ interface KanbanColumn {
   ],
 })
 export class KanbanBoardComponent implements OnInit {
-  private tasksService = inject(TasksService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
 
@@ -175,12 +180,22 @@ export class KanbanBoardComponent implements OnInit {
 
   connectedDropLists: string[] = [];
 
+  constructor(private store: Store<AppState>) {}
+
   ngOnInit() {
     this.connectedDropLists = this.columns.map((col) => col.id);
     const userId = this.authService.getCurrentUser()?.uid;
     if (userId) {
-      this.tasksService.getTasks().subscribe((tasks) => {
-        this.organizeTasks(tasks);
+      this.store.dispatch(loadTasks());
+
+      this.store.select(selectAllTasks).subscribe({
+        next: (tasks) => {
+          this.organizeTasks(tasks);
+        },
+        error: (error) => {
+          console.error('Error loading tasks:', error);
+          this.notificationService.error('Error loading tasks');
+        },
       });
     }
   }
@@ -222,10 +237,15 @@ export class KanbanBoardComponent implements OnInit {
       const task = event.container.data[event.currentIndex];
       const newStatus = this.getNewTaskStatus(event.container.id);
 
-      this.tasksService.updateTask(task.id, {
-        ...task,
-        ...newStatus,
-      });
+      this.store.dispatch(
+        updateTask({
+          taskId: task.id,
+          updates: {
+            ...task,
+            ...newStatus,
+          },
+        })
+      );
 
       this.notificationService.success(
         `Task moved to "${this.getColumnTitle(event.container.id)}"`

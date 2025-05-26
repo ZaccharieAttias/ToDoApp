@@ -68,7 +68,10 @@
         [innerHTML]="comment.content | mention : allUserDisplayNames"
       ></span>
       <span
-        *ngIf="comment.updatedAt && comment.updatedAt !== comment.createdAt"
+        *ngIf="
+          comment.updatedAt &&
+          comment.updatedAt.getTime() !== comment.createdAt.getTime()
+        "
         class="comment-edited"
       >
         (edited on {{ comment.updatedAt | date : "dd/MM/yyyy HH:mm" }})

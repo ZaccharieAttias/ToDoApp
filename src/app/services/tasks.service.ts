@@ -28,6 +28,8 @@ import { AuthService } from './auth.service';
   providedIn: 'root',
 })
 export class TasksService {
+  // old way
+  /*
   // private tasksSubject = new BehaviorSubject<Task[]>([]);
   // tasks$ = this.tasksSubject.asObservable();
 
@@ -119,7 +121,7 @@ export class TasksService {
   }*/
   /*private isBrowser(): boolean {
     return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
-  }*/
+  }
 
   private firestore = inject(Firestore);
   private authService = inject(AuthService);
@@ -232,7 +234,7 @@ export class TasksService {
     return this.getTasks().pipe(
       map((tasks) => tasks.find((task) => task.id === id))
     );
-  }
+  }*/
 
   private convertTimestampToDate(timestamp: any): Date {
     if (timestamp instanceof Timestamp) {

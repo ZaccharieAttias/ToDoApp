@@ -1,11 +1,14 @@
 import { Component, OnInit, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Task } from '../../models/task.model';
-import { TasksService } from '../../services/tasks.service';
 import { TaskListComponent } from './task-list/task-list.component';
 import { AuthService } from '../../services/auth.service';
 import { Router, ActivatedRoute } from '@angular/router';
-
+import { Store } from '@ngrx/store';
+import { selectAllTasks } from '../../state/tasks/selectors/tasks.selectors';
+import { Observable, of } from 'rxjs';
+import { deleteTask, loadTasks } from '../../state/tasks/actions/tasks.actions';
+import { AppState } from '../../state/tasks/state/app.state';
 @Component({
   selector: 'app-tasks',
   standalone: true,
@@ -14,29 +17,24 @@ import { Router, ActivatedRoute } from '@angular/router';
   styleUrl: './tasks.component.css',
 })
 export class TasksComponent implements OnInit {
-  tasks: Task[] = [];
   taskToEdit: Task | null = null;
   showForm = false;
-  private destroyRef = inject(DestroyRef);
-
+  tasks$: Observable<Task[]>;
   constructor(
-    private tasksService: TasksService,
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute
-  ) {}
+    private route: ActivatedRoute,
+    private store: Store<AppState>
+  ) {
+    if (this.authService.isLoggedIn()) {
+      this.tasks$ = this.store.select(selectAllTasks);
+    } else {
+      this.tasks$ = of([]);
+    }
+  }
 
   ngOnInit() {
-    const userId = this.authService.getCurrentUser()?.uid;
-    if (userId) {
-      const subscription = this.tasksService
-        .getTasks()
-        .subscribe((tasks: Task[]) => {
-          this.tasks = tasks;
-        });
-
-      this.destroyRef.onDestroy(() => subscription.unsubscribe());
-    }
+    this.store.dispatch(loadTasks());
   }
 
   onEditTask(task: Task) {
@@ -44,7 +42,7 @@ export class TasksComponent implements OnInit {
   }
 
   onDeleteTask(taskId: string) {
-    this.tasksService.deleteTask(taskId);
+    this.store.dispatch(deleteTask({ taskId }));
   }
 
   onNewTask() {

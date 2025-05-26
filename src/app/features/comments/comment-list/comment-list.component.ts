@@ -4,9 +4,11 @@ import { Comment } from '../../../models/comment.model';
 import { CommonModule, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../services/auth.service';
-import { TasksService } from '../../../services/tasks.service';
 import { FormsModule } from '@angular/forms';
 import { MentionPipe } from '../../../shared/pipes/mention.pipe';
+import { AppState } from '../../../state/tasks/state/app.state';
+import { Store } from '@ngrx/store';
+import { selectTaskById } from '../../../state/tasks/selectors/tasks.selectors';
 
 @Component({
   selector: 'app-comment-list',
@@ -39,7 +41,7 @@ export class CommentListComponent implements OnInit {
   constructor(
     private commentService: CommentService,
     private authService: AuthService,
-    private tasksService: TasksService
+    private store: Store<AppState>
   ) {
     this.currentUserId = this.authService.getCurrentUser()?.uid || null;
   }
@@ -56,8 +58,8 @@ export class CommentListComponent implements OnInit {
         ];
       });
 
-    this.tasksService
-      .getTaskById(this.taskId)
+    this.store
+      .select(selectTaskById(this.taskId))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((task) => {
         this.taskOwnerId = task?.uid || null;
@@ -77,7 +79,6 @@ export class CommentListComponent implements OnInit {
       .subscribe({
         next: (comments: Comment[]) => {
           this.comments = this.sortCommentsByDate(comments);
-          console.log('Comments loaded:', this.comments);
         },
         error: (error) => {
           console.error('Error loading comments:', error);

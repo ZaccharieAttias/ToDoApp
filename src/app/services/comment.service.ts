@@ -160,6 +160,7 @@ export class CommentService {
 
     const id = doc(collection(this.firestore, 'comments')).id;
     const ref = doc(this.firestore, 'comments', id);
+    const date = new Date();
 
     const comment: Comment = {
       id,
@@ -167,8 +168,8 @@ export class CommentService {
       userId: user.uid,
       userName: user.displayName || 'Anonymous',
       content,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: date,
+      updatedAt: date,
     };
     await setDoc(ref, comment);
     this.notificationService.success('Comment added successfully!');

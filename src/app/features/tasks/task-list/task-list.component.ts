@@ -2,13 +2,19 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Task } from '../../../models/task.model';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, startWith } from 'rxjs/operators';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  startWith,
+} from 'rxjs/operators';
 import {
   BehaviorSubject,
   Observable,
   Subject,
   takeUntil,
   combineLatest,
+  of,
 } from 'rxjs';
 import { FilterByStatusPipe } from '../../../shared/pipes/filter-by-status.pipe';
 import { CommentService } from '../../../services/comment.service';
@@ -17,6 +23,14 @@ import { CommentFormComponent } from '../../comments/comment-form/comment-form.c
 import { AuthService } from '../../../services/auth.service';
 import { User } from '../../../models/user.model';
 import { MentionPipe } from '../../../shared/pipes/mention.pipe';
+import { Store } from '@ngrx/store';
+import {
+  selectAllTasks,
+  selectTasksLoading,
+} from '../../../state/tasks/selectors/tasks.selectors';
+import { TaskState } from '../../../state/tasks/models/task.model';
+import { loadTasks } from '../../../state/tasks/actions/tasks.actions';
+import { AppState } from '../../../state/tasks/state/app.state';
 
 @Component({
   selector: 'app-task-list',
@@ -33,16 +47,9 @@ import { MentionPipe } from '../../../shared/pipes/mention.pipe';
   styleUrls: ['./task-list.component.css'],
 })
 export class TaskListComponent implements OnInit {
-  @Input() set tasks(value: Task[]) {
-    this.originalTasks$.next(value);
-    this.filterTasks();
-    this.resetExpandedTasks();
-  }
   @Output() editRequested = new EventEmitter<Task>();
   @Output() deleteRequested = new EventEmitter<Task>();
 
-  private originalTasks$ = new BehaviorSubject<Task[]>([]);
-  private tasks$ = new BehaviorSubject<Task[]>([]);
   private destroy$ = new Subject<void>();
   taskCommentsCount = new Map<string, number>();
   currentUserId: string | undefined;
@@ -52,9 +59,8 @@ export class TaskListComponent implements OnInit {
   statusFilter = new FormControl('all');
   expandedTasks = new Set<string>();
 
-  get currentTasks(): Observable<Task[]> {
-    return this.tasks$.asObservable();
-  }
+  tasksLoading$: Observable<boolean>;
+  filteredTasks$: Observable<Task[]>;
 
   get currentStatus(): string {
     return this.statusFilter.value || 'all';
@@ -62,27 +68,68 @@ export class TaskListComponent implements OnInit {
 
   constructor(
     private commentService: CommentService,
-    private authService: AuthService
+    private authService: AuthService,
+    private store: Store<AppState>
   ) {
     this.currentUserId = this.authService.getCurrentUser()?.uid;
+    this.tasksLoading$ = this.store.select(selectTasksLoading);
+    this.filteredTasks$ = this.store.select(selectAllTasks);
     this.authService.getUsers().subscribe((users) => {
       this.users = users;
     });
   }
 
   ngOnInit() {
-    combineLatest([
-      this.searchControl.valueChanges.pipe(
-        debounceTime(500),
-        distinctUntilChanged(),
-        startWith('')
-      ),
-      this.statusFilter.valueChanges.pipe(startWith('all')),
-    ])
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.filterTasks();
-      });
+    this.store.dispatch(loadTasks());
+
+    // this.store.select(selectAllTasks).pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
+    //   this.filteredTasks$ = of(tasks);
+    //   this.filterTasks();
+    //   this.resetExpandedTasks();
+    // })
+
+    // combineLatest([
+    //   this.searchControl.valueChanges.pipe(
+    //     debounceTime(500),
+    //     distinctUntilChanged(),
+    //     startWith('')
+    //   ),
+    //   this.statusFilter.valueChanges.pipe(startWith('all')),
+    // ])
+    //   .pipe(takeUntil(this.destroy$))
+    //   .subscribe(() => {
+    //     this.filterTasks();
+    //   });
+
+    const search$ = this.searchControl.valueChanges.pipe(
+      debounceTime(500),
+      distinctUntilChanged(),
+      startWith('')
+    );
+
+    const status$ = this.statusFilter.valueChanges.pipe(startWith('all'));
+
+    this.filteredTasks$ = combineLatest([
+      this.store.select(selectAllTasks),
+      search$,
+      status$,
+    ]).pipe(
+      map(([tasks, searchTerm, status]) => {
+        const search = searchTerm?.toLowerCase() || '';
+        const filtered = tasks.filter((task) => {
+          const matchesSearch =
+            task.title.toLowerCase().includes(search) ||
+            task.description.toLowerCase().includes(search) ||
+            task.tags?.some((tag) => tag.toLowerCase().includes(search));
+          const matchesStatus =
+            status === 'all' ||
+            (status === 'completed' ? task.status : !task.status);
+          return matchesSearch && matchesStatus;
+        });
+        this.resetExpandedTasks();
+        return filtered;
+      })
+    );
 
     this.loadCommentsCount();
     this.authService.getUsers().subscribe((users) => {
@@ -94,24 +141,8 @@ export class TaskListComponent implements OnInit {
     this.expandedTasks.clear();
   }
 
-  private filterTasks(): void {
-    const searchTerm = this.searchControl.value?.toLowerCase() || '';
-    const currentTasks = this.originalTasks$.getValue();
-
-    const filtered = currentTasks.filter((task) => {
-      return (
-        task.title.toLowerCase().includes(searchTerm) ||
-        task.description.toLowerCase().includes(searchTerm) ||
-        task.tags?.some((tag) => tag.toLowerCase().includes(searchTerm))
-      );
-    });
-
-    this.tasks$.next(filtered);
-    this.resetExpandedTasks();
-  }
-
   private loadCommentsCount(): void {
-    this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
+    this.filteredTasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
       tasks.forEach((task) => {
         this.commentService
           .getCommentsFromTask(task.id)
@@ -121,6 +152,7 @@ export class TaskListComponent implements OnInit {
           });
       });
     });
+    // V1
     // function to load the comments count for each task
     // this.commentService
     // .getCommentsFromTask('')
@@ -132,6 +164,18 @@ export class TaskListComponent implements OnInit {
     //     countMap.set(comment.taskId, currentCount + 1);
     //   });
     //   this.taskCommentsCount = countMap;
+    // });
+
+    // V2
+    // this.tasks$.pipe(takeUntil(this.destroy$)).subscribe((tasks) => {
+    //   tasks.forEach((task) => {
+    //     this.commentService
+    //       .getCommentsFromTask(task.id)
+    //       .pipe(takeUntil(this.destroy$))
+    //       .subscribe((comments) => {
+    //         this.taskCommentsCount.set(task.id, comments.length);
+    //       });
+    //   });
     // });
   }
 

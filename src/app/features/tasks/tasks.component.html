@@ -7,11 +7,12 @@
     </button>
   </div>
 
-  <div *ngIf="tasks.length === 0" class="no-tasks">
-    <p>No tasks for the moment. Create a new one !</p>
+  <div *ngIf="tasks$ | async as tasks">
+    <p *ngIf="tasks.length === 0">
+      No tasks for the moment. Create a new one !
+    </p>
   </div>
   <app-task-list
-    [tasks]="tasks"
     (editRequested)="onEditTask($event)"
     (deleteRequested)="onDeleteTask($event.id)"
   >
